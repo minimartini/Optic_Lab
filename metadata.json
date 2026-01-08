@@ -1,0 +1,5 @@
+{
+  "name": "OpticLab: Advanced Pinhole Simulator v2",
+  "description": "An accurate scientific simulator for pinhole photography and diffractive optics. Simulate various apertures, calculate optimal parameters, and visualize results with real-time convolution.",
+  "requestFramePermissions": []
+}

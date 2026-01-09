@@ -1,5 +1,4 @@
 
-
 import { ApertureConfig, ApertureType, MultiDotPattern, CameraConfig, SimulationResult } from '../types';
 
 export const DEFAULT_WAVELENGTH = 550;
@@ -10,90 +9,7 @@ export const PHYSICS_CONSTANTS = {
   DEFAULT_ZONES: 10,
   MIN_DIAMETER_MM: 0.001,
   AIRY_DISK_FACTOR: 2.44,
-  RGB_WAVELENGTHS: [640, 540, 460] // sRGB Primaries
-};
-
-class ComplexArray {
-    n: number;
-    real: Float32Array;
-    imag: Float32Array;
-    constructor(n: number) {
-        this.n = n;
-        this.real = new Float32Array(n);
-        this.imag = new Float32Array(n);
-    }
-}
-
-const FFT = {
-    transform: (out: ComplexArray, inverse: boolean) => {
-        const n = out.n;
-        const bits = Math.log2(n);
-        for (let i = 0; i < n; i++) {
-            let rev = 0, val = i;
-            for (let j = 0; j < bits; j++) { rev = (rev << 1) | (val & 1); val >>= 1; }
-            if (rev > i) {
-                const tr = out.real[i], ti = out.imag[i];
-                out.real[i] = out.real[rev]; out.imag[i] = out.imag[rev];
-                out.real[rev] = tr; out.imag[rev] = ti;
-            }
-        }
-        for (let s = 1; s <= bits; s++) {
-            const m = 1 << s, m2 = m >> 1;
-            const theta = (inverse ? -2 : 2) * Math.PI / m;
-            const wR_base = Math.cos(theta), wI_base = Math.sin(theta);
-            for (let k = 0; k < n; k += m) {
-                let wR = 1, wI = 0;
-                for (let j = 0; j < m2; j++) {
-                    const idx = k + j + m2;
-                    const tR = wR * out.real[idx] - wI * out.imag[idx];
-                    const tI = wR * out.imag[idx] + wI * out.real[idx];
-                    const uR = out.real[k+j], uI = out.imag[k+j];
-                    out.real[k+j] = uR + tR; out.imag[k+j] = uI + tI;
-                    out.real[idx] = uR - tR; out.imag[idx] = uI - tI;
-                    const nextWR = wR * wR_base - wI * wI_base;
-                    wI = wR * wI_base + wI * wR_base; wR = nextWR;
-                }
-            }
-        }
-        if (inverse) {
-            for(let i=0; i<n; i++) { out.real[i] /= n; out.imag[i] /= n; }
-        }
-    },
-    fft2D: (cArr: ComplexArray, w: number, h: number, inverse: boolean) => {
-        for(let y=0; y<h; y++) {
-            const row = new ComplexArray(w);
-            const off = y*w;
-            for(let x=0; x<w; x++) { row.real[x] = cArr.real[off+x]; row.imag[x] = cArr.imag[off+x]; }
-            FFT.transform(row, inverse);
-            for(let x=0; x<w; x++) { cArr.real[off+x] = row.real[x]; cArr.imag[off+x] = row.imag[x]; }
-        }
-        for(let x=0; x<w; x++) {
-            const col = new ComplexArray(h);
-            for(let y=0; y<h; y++) { col.real[y] = cArr.real[y*w+x]; col.imag[y] = cArr.imag[y*w+x]; }
-            FFT.transform(col, inverse);
-            for(let y=0; y<h; y++) { cArr.real[y*w+x] = col.real[y]; cArr.imag[y*w+x] = col.imag[y]; }
-        }
-    },
-    fftShift: (cArr: ComplexArray, w: number, h: number) => {
-        const halfW = Math.floor(w/2);
-        const halfH = Math.floor(h/2);
-        const tempR = new Float32Array(w*h), tempI = new Float32Array(w*h);
-        for(let y=0; y<h; y++) {
-            for(let x=0; x<w; x++) {
-                const newX = (x + halfW) % w, newY = (y + halfH) % h;
-                const iOld = y*w + x, iNew = newY*w + newX;
-                tempR[iNew] = cArr.real[iOld]; tempI[iNew] = cArr.imag[iOld];
-            }
-        }
-        cArr.real.set(tempR); cArr.imag.set(tempI);
-    }
-};
-
-const createCanvas = (w: number, h: number): OffscreenCanvas | HTMLCanvasElement => {
-    if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h);
-    const canvas = document.createElement('canvas');
-    canvas.width = w; canvas.height = h;
-    return canvas;
+  RGB_WAVELENGTHS: [640, 540, 460] // Standardized sRGB Primaries
 };
 
 const generateURA = (rank: number) => {
@@ -199,6 +115,12 @@ const calculateOpenArea = (aperture: ApertureConfig): number => {
              const s = aperture.spread || 5.0;
              const triArea = (Math.sqrt(3)/4) * s * s;
              return triArea * Math.pow(3/4, aperture.iteration || 3);
+        
+        case ApertureType.LISSAJOUS:
+        case ApertureType.SPIRAL:
+        case ApertureType.ROSETTE:
+             // Approximation: Length * Thickness
+             return (aperture.diameter * 3) * (aperture.slitWidth || 0.1); 
 
         default:
             return Math.PI * r * r;
@@ -212,7 +134,8 @@ export const calculatePhysics = (camera: CameraConfig, aperture: ApertureConfig)
 
   let featureSize = aperture.diameter;
   
-  if (aperture.type === ApertureType.SLIT || aperture.type === ApertureType.CROSS || aperture.type === ApertureType.WAVES || aperture.type === ApertureType.SLIT_ARRAY) {
+  if ([ApertureType.SLIT, ApertureType.CROSS, ApertureType.WAVES, ApertureType.SLIT_ARRAY, 
+       ApertureType.LISSAJOUS, ApertureType.SPIRAL, ApertureType.ROSETTE].includes(aperture.type)) {
       featureSize = aperture.slitWidth || 0.1;
   } else if (aperture.type === ApertureType.LITHO_OPC) {
       featureSize = aperture.diameter || 0.1; 
@@ -250,8 +173,24 @@ export const calculatePhysics = (camera: CameraConfig, aperture: ApertureConfig)
   }
 
   const openAreaMm2 = calculateOpenArea(aperture);
-  const effectiveClearDiameter = 2 * Math.sqrt(openAreaMm2 / Math.PI);
-  const fNumber = focalLength / effectiveClearDiameter;
+  
+  // F-Number Calculation Logic Update
+  let effectiveDiameter: number;
+  if ([ApertureType.SLIT, ApertureType.CROSS, ApertureType.SLIT_ARRAY, ApertureType.WAVES, 
+       ApertureType.YIN_YANG, ApertureType.LISSAJOUS, ApertureType.SPIRAL, ApertureType.ROSETTE].includes(aperture.type)) {
+      // For slits, the critical dimension for diffraction and DOF is the width
+      effectiveDiameter = aperture.slitWidth || 0.1;
+  } else if (aperture.type === ApertureType.LITHO_OPC) {
+      effectiveDiameter = aperture.diameter || 0.1; 
+  } else if (aperture.type === ApertureType.ANNULAR) {
+      // For annular, the outer diameter defines the light cone angle
+      effectiveDiameter = aperture.diameter;
+  } else {
+      // For general holes, use area-equivalent diameter
+      effectiveDiameter = 2 * Math.sqrt(openAreaMm2 / Math.PI);
+  }
+  
+  const fNumber = focalLength / effectiveDiameter;
 
   const geometricBlur = featureSize;
   const diffractionBlur = (PHYSICS_CONSTANTS.AIRY_DISK_FACTOR * lambda * focalLength) / featureSize;
@@ -347,21 +286,29 @@ export const drawAperture = (
     case ApertureType.ZONE_PLATE:
       const maxN = Math.floor(Math.pow(aperture.diameter/2, 2) / (lambda * focalLength));
       
-      if (aperture.zonePlateProfile === 'SINUSOIDAL') {
-          // Approximate Newton's Rings / Sinusoidal Zone Plate
-          // Instead of drawing binary rings, we need to draw a gradient.
-          // Since we are in a 2D canvas context usually expecting binary masks for simple FFT,
-          // we simulate this by drawing many thin rings with varying opacity.
+      if (aperture.zonePlateProfile === 'SPIRAL') {
+          // Spiral Zone Plate: Adds angular momentum
           const maxR = (aperture.diameter * scale) / 2;
-          // Create radial gradient-like effect
-          // Intensity I(r) = 0.5 * (1 + cos(k * r^2))
-          // We can't do per-pixel efficiently here in path mode, so we draw fine rings.
+          const stepSize = 0.5; 
+          for(let r=0; r<maxR; r+=stepSize) {
+               for(let theta=0; theta<Math.PI*2; theta+=0.05) {
+                   const r_mm = r / scale;
+                   // Phase = k*r^2/2f + l*theta
+                   const phase = (Math.PI * r_mm * r_mm) / (lambda * focalLength) + theta;
+                   const val = Math.cos(phase) > 0 ? 1 : 0;
+                   if (val) {
+                       ctx.fillStyle = '#fff';
+                       ctx.fillRect(r*Math.cos(theta), r*Math.sin(theta), 1.5, 1.5);
+                   }
+               }
+          }
+      } 
+      else if (aperture.zonePlateProfile === 'SINUSOIDAL') {
+          const maxR = (aperture.diameter * scale) / 2;
           const stepSize = 0.5; // px
           for(let r=0; r<maxR; r+=stepSize) {
                const r_mm = r / scale;
-               // Phase = (pi * r^2) / (lambda * f)
                const phase = (Math.PI * r_mm * r_mm) / (lambda * focalLength);
-               // Sinusoidal transmission: (1 + cos(phase)) / 2
                const transmission = (1 + Math.cos(phase)) / 2;
                
                ctx.beginPath();
@@ -371,7 +318,6 @@ export const drawAperture = (
                ctx.stroke();
           }
       } else {
-          // Standard Binary Zone Plate
           for (let n = Math.max(1, maxN); n >= 1; n--) {
             const r_px = Math.sqrt(n * lambda * focalLength) * scale;
             ctx.beginPath(); ctx.arc(0, 0, r_px, 0, Math.PI * 2);
@@ -410,11 +356,10 @@ export const drawAperture = (
 
     case ApertureType.SLIT_ARRAY:
        {
-           // Young's Double Slit / Diffraction Grating
            const n = Math.max(2, aperture.count || 2);
            const w = (aperture.slitWidth || 0.1) * scale;
            const h = (aperture.diameter || 5.0) * scale;
-           const spacing = (aperture.spread || 0.5) * scale; // Center to Center
+           const spacing = (aperture.spread || 0.5) * scale; 
            
            const totalWidth = (n - 1) * spacing;
            const startX = -totalWidth / 2;
@@ -647,6 +592,89 @@ export const drawAperture = (
              drawTri(p1, p2, p3, sTrIter);
          }
          break;
+
+    case ApertureType.LISSAJOUS:
+         {
+             const rx = aperture.lissajousRX || 3;
+             const ry = aperture.lissajousRY || 2;
+             const delta = (aperture.lissajousDelta || 0) * (Math.PI/180);
+             const r = (aperture.diameter * scale) / 2;
+             const thickness = (aperture.slitWidth || 0.1) * scale;
+             
+             ctx.lineCap = 'round';
+             ctx.lineJoin = 'round';
+             ctx.lineWidth = thickness;
+             ctx.strokeStyle = '#fff';
+             
+             ctx.beginPath();
+             const steps = 500;
+             for(let i=0; i<=steps; i++) {
+                 const t = (i/steps) * Math.PI * 2;
+                 const x = r * Math.sin(rx * t + delta);
+                 const y = r * Math.sin(ry * t);
+                 if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+             }
+             ctx.stroke();
+         }
+         break;
+
+    case ApertureType.SPIRAL:
+         {
+             const arms = Math.max(1, aperture.spiralArms || 1);
+             const turns = aperture.spiralTurns || 3;
+             const maxR = (aperture.diameter * scale) / 2;
+             const thickness = (aperture.slitWidth || 0.1) * scale;
+             
+             ctx.lineCap = 'round';
+             ctx.lineJoin = 'round';
+             ctx.lineWidth = thickness;
+             ctx.strokeStyle = '#fff';
+             
+             const angleStep = (Math.PI*2) / arms;
+             
+             for(let a=0; a<arms; a++) {
+                 const startAngle = a * angleStep;
+                 ctx.beginPath();
+                 const steps = 100 * turns;
+                 for(let i=0; i<=steps; i++) {
+                     const t = i/steps; // 0 to 1
+                     const r = t * maxR;
+                     const theta = startAngle + (t * Math.PI * 2 * turns);
+                     const x = r * Math.cos(theta);
+                     const y = r * Math.sin(theta);
+                     if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+                 }
+                 ctx.stroke();
+             }
+         }
+         break;
+
+    case ApertureType.ROSETTE:
+         {
+             const petals = aperture.rosettePetals || 5;
+             const rBase = (aperture.diameter * scale) / 2;
+             const amp = (aperture.slitHeight || rBase * 0.3) * scale; // Amplitude as 'slitHeight'
+             const thickness = (aperture.slitWidth || 0.1) * scale;
+             
+             ctx.lineCap = 'round';
+             ctx.lineJoin = 'round';
+             ctx.lineWidth = thickness;
+             ctx.strokeStyle = '#fff';
+             
+             ctx.beginPath();
+             const steps = 360;
+             for(let i=0; i<=steps; i++) {
+                 const theta = (i/steps) * Math.PI * 2;
+                 // r = R + A * cos(k*theta)
+                 const r = rBase + amp * Math.cos(petals * theta);
+                 const x = r * Math.cos(theta);
+                 const y = r * Math.sin(theta);
+                 if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+             }
+             ctx.closePath();
+             ctx.stroke();
+         }
+         break;
          
     case ApertureType.FREEFORM:
          if (aperture.customPath && aperture.customPath.length > 0) {
@@ -692,105 +720,7 @@ export const drawAperture = (
 };
 
 export const generateKernel = (camera: CameraConfig, aperture: ApertureConfig, wavelength: number, pixelsPerMm: number, maskBitmap?: ImageBitmap): Float32Array => {
-    const lambdaMm = wavelength * PHYSICS_CONSTANTS.WAVELENGTH_TO_MM;
-    const z = camera.focalLength;
-    const d = aperture.diameter; 
-    
-    // Determine Simulation Window
-    const diffractiveSize = (40 * lambdaMm * z) / (d || 0.1); 
-    const geometricSize = (aperture.diameter || 1.0) * 1.5;
-    
-    // For Slit Arrays, calculating geometric size needs care
-    let effectiveGeo = geometricSize;
-    if (aperture.type === ApertureType.SLIT_ARRAY) {
-       effectiveGeo = ((aperture.count || 2) * (aperture.spread || 1.0)) * 1.5;
-    }
-
-    const physSize = Math.max(effectiveGeo, diffractiveSize); 
-    
-    // Resolution
-    let N = 256; 
-    const reqRes = physSize * pixelsPerMm;
-    if (reqRes > 256) N = 512;
-    if (reqRes > 512) N = 1024;
-    // Cap at 2048 for GPU memory safety, but allow 1024 for sharp lines
-    if (reqRes > 1024) N = 2048; 
-    
-    // 1. Draw Aperture
-    const canvas = createCanvas(N, N);
-    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-    ctx.fillStyle = '#000'; ctx.fillRect(0,0,N,N);
-    const simPixelsPerMm = N / physSize;
-    ctx.translate(N/2, N/2);
-    
-    drawAperture(ctx, simPixelsPerMm, aperture, wavelength, z, maskBitmap);
-    
-    ctx.translate(-N/2, -N/2);
-    const imgData = ctx.getImageData(0,0,N,N).data;
-    
-    // 2. Init Field
-    const field = new ComplexArray(N*N);
-    for(let i=0; i<N*N; i++) {
-        const val = imgData[i*4] / 255.0;
-        field.real[i] = val; 
-    }
-
-    if (!aperture.renderDiffraction) {
-         const output = new Float32Array(N*N);
-         let sum = 0;
-         for(let i=0; i<N*N; i++) {
-             const val = imgData[i*4] / 255.0;
-             output[i] = val;
-             sum += val;
-         }
-         if (sum > 0) for(let i=0; i<N*N; i++) output[i] /= sum;
-         return output;
-    }
-
-    // 3. FFT -> Transfer Function -> IFFT
-    FFT.fft2D(field, N, N, false);
-    FFT.fftShift(field, N, N); 
-
-    const dk = 1.0 / physSize; 
-    const k = 2 * Math.PI / lambdaMm;
-    
-    for(let y=0; y<N; y++) {
-        const fy = (y - N/2) * dk;
-        for(let x=0; x<N; x++) {
-            const fx = (x - N/2) * dk;
-            const idx = y*N + x;
-            const val = 1.0 - (lambdaMm*fx)**2 - (lambdaMm*fy)**2;
-            
-            if (val >= 0) {
-                const phase = k * z * Math.sqrt(val);
-                const cosP = Math.cos(phase);
-                const sinP = Math.sin(phase);
-                const r = field.real[idx], i = field.imag[idx];
-                field.real[idx] = r*cosP - i*sinP;
-                field.imag[idx] = r*sinP + i*cosP;
-            } else {
-                const decay = k * z * Math.sqrt(-val);
-                const ev = Math.exp(-decay);
-                field.real[idx] *= ev;
-                field.imag[idx] *= ev;
-            }
-        }
-    }
-
-    FFT.fftShift(field, N, N); 
-    FFT.fft2D(field, N, N, true);
-    
-    const output = new Float32Array(N*N);
-    let sum = 0;
-    for(let i=0; i<N*N; i++) {
-        const magSq = field.real[i]**2 + field.imag[i]**2;
-        output[i] = magSq;
-        sum += magSq;
-    }
-    
-    if (sum > 0) {
-        for(let i=0; i<N*N; i++) output[i] /= sum;
-    }
-    
-    return output;
+    // Stub: Logic moved to worker for full image FFT.
+    // This allows for future client-side light kernels if needed, but for now it's a placeholder.
+    return new Float32Array(0); 
 };

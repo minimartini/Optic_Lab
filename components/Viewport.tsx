@@ -25,7 +25,6 @@ const Viewport: React.FC<ViewportProps> = ({ originalImage, processedImage, onUp
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Determine which image to show
     const imgData = processedImage || originalImage;
 
     if (imgData && imgData.width > 0 && imgData.height > 0) {
@@ -34,16 +33,31 @@ const Viewport: React.FC<ViewportProps> = ({ originalImage, processedImage, onUp
       ctx.putImageData(imgData, 0, 0);
     } else {
         // Clear canvas
-        canvas.width = 800; // Set default size to avoid 0x0 issues
+        canvas.width = 800; 
         canvas.height = 600;
         ctx.clearRect(0,0, canvas.width, canvas.height);
-        // Draw placeholder text
-        ctx.fillStyle = "#111";
+        
+        // Technical placeholder
+        ctx.fillStyle = "#0a0a0a";
         ctx.fillRect(0,0, canvas.width, canvas.height);
+        
+        // Draw centered crosshair
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx - 20, cy); ctx.lineTo(cx + 20, cy);
+        ctx.moveTo(cx, cy - 20); ctx.lineTo(cx, cy + 20);
+        ctx.stroke();
+        
         ctx.fillStyle = "#444";
         ctx.textAlign = "center";
-        ctx.font = "14px monospace";
-        ctx.fillText("No Image Loaded - Using Point Source", canvas.width/2, canvas.height/2);
+        ctx.font = "12px 'JetBrains Mono', monospace";
+        ctx.fillText("SENSOR EMPTY", canvas.width/2, canvas.height/2 + 40);
+        ctx.fillStyle = "#333";
+        ctx.font = "10px 'Inter', sans-serif";
+        ctx.fillText("DRAG AND DROP SOURCE OR UPLOAD", canvas.width/2, canvas.height/2 + 55);
     }
   }, [originalImage, processedImage]);
 
@@ -59,22 +73,23 @@ const Viewport: React.FC<ViewportProps> = ({ originalImage, processedImage, onUp
 
   return (
     <div 
-      className="flex-1 bg-black relative overflow-hidden flex flex-col items-center justify-center"
+      className="flex-1 bg-mono-950 bg-tech-grid relative overflow-hidden flex flex-col items-center justify-center"
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
     >
-      <div className="absolute top-4 left-4 z-10 flex gap-2">
+      {/* Top Toolbar */}
+      <div className="absolute top-6 z-10 flex gap-2 backdrop-blur-md bg-black/60 p-1.5 rounded-full border border-white/10 shadow-xl">
         <button 
           onClick={() => fileInputRef.current?.click()}
-          className="bg-gray-800 hover:bg-gray-700 text-white text-xs px-4 py-2 rounded border border-gray-700 transition-colors shadow-lg"
+          className="bg-white/10 hover:bg-white/20 text-gray-200 text-xs px-4 py-2 rounded-full border border-white/5 transition-all shadow-lg font-medium"
         >
-          Upload Image
+          Load Source
         </button>
         {originalImage && (
             <button 
               onClick={onClear}
-              className="bg-red-900/30 hover:bg-red-900/50 text-red-400 text-xs px-3 py-2 rounded border border-red-900/50 transition-colors shadow-lg flex items-center gap-1"
-              title="Eject Image"
+              className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-3 py-2 rounded-full border border-red-500/20 transition-all flex items-center gap-1"
+              title="Clear Sensor"
             >
               <TrashIcon />
             </button>
@@ -83,29 +98,36 @@ const Viewport: React.FC<ViewportProps> = ({ originalImage, processedImage, onUp
           type="file" 
           ref={fileInputRef} 
           className="hidden" 
-          accept="image/png, image/jpeg, image/webp, image/gif, image/svg+xml, image/bmp"
+          accept="image/*"
           onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])}
         />
       </div>
 
-      <div className="relative shadow-2xl shadow-black border border-gray-800">
+      {/* Main Canvas Container */}
+      <div className="relative p-1 border border-white/5 bg-black shadow-2xl shadow-black rounded-sm">
+        {/* Sensor Frame Marks (Corner Brackets) */}
+        <div className="absolute top-[-1px] left-[-1px] w-4 h-4 border-t border-l border-science-500/50"></div>
+        <div className="absolute top-[-1px] right-[-1px] w-4 h-4 border-t border-r border-science-500/50"></div>
+        <div className="absolute bottom-[-1px] left-[-1px] w-4 h-4 border-b border-l border-science-500/50"></div>
+        <div className="absolute bottom-[-1px] right-[-1px] w-4 h-4 border-b border-r border-science-500/50"></div>
+
         <canvas 
             ref={canvasRef} 
-            className="max-w-full max-h-[80vh] object-contain block"
-            style={{ imageRendering: 'pixelated' }} // Optional style
+            className="max-w-full max-h-[80vh] object-contain block bg-[#050505]"
+            style={{ imageRendering: 'pixelated' }} 
         />
+        
         {isProcessing && (
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px]">
-                <div className="w-8 h-8 border-2 border-science-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center backdrop-blur-sm z-20">
+                <div className="w-12 h-12 border-2 border-science-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <div className="text-science-400 font-mono text-xs tracking-widest animate-pulse">INTEGRATING...</div>
             </div>
         )}
       </div>
 
-      {!originalImage && (
-        <div className="text-gray-500 text-sm mt-4 font-mono">
-          Drag & Drop an image to start
-        </div>
-      )}
+      <div className="absolute bottom-6 left-6 text-[10px] text-gray-700 font-mono select-none">
+          SENSOR_READOUT::ACTIVE
+      </div>
     </div>
   );
 };

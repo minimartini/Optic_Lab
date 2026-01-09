@@ -86,14 +86,15 @@ const AperturePreview: React.FC<AperturePreviewProps> = ({
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
     
-    // Background
-    ctx.fillStyle = '#111';
+    // Background: Dark gray, almost black
+    ctx.fillStyle = '#18181b'; 
     ctx.fillRect(0, 0, rect.width, rect.height);
     
     // Grid
-    ctx.strokeStyle = '#222';
+    ctx.strokeStyle = '#27272a';
     ctx.lineWidth = 1;
     ctx.beginPath();
+    // Center Lines
     ctx.moveTo(0, centerY); ctx.lineTo(rect.width, centerY);
     ctx.moveTo(centerX, 0); ctx.lineTo(centerX, rect.height);
     ctx.stroke();
@@ -106,8 +107,8 @@ const AperturePreview: React.FC<AperturePreviewProps> = ({
     if (showOverlay) {
         const mountPx = mountSizeMm * scale;
         // Draw Frame
-        ctx.strokeStyle = '#333'; 
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#3f3f46'; 
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
         // Rounded rect for slide mount look
         const r = 4;
@@ -121,15 +122,15 @@ const AperturePreview: React.FC<AperturePreviewProps> = ({
         
         // Inner Window (approx standard slide window 24x36 or similar, assume square 35mm for generic)
         const windowPx = 35 * scale;
-        ctx.strokeStyle = '#444';
-        ctx.setLineDash([2, 2]);
+        ctx.strokeStyle = '#3f3f46';
+        ctx.setLineDash([2, 4]);
         ctx.strokeRect(-windowPx/2, -windowPx/2, windowPx, windowPx);
         ctx.setLineDash([]);
         
-        ctx.fillStyle = '#444';
-        ctx.font = '10px monospace';
+        ctx.fillStyle = '#52525b';
+        ctx.font = '10px "JetBrains Mono", monospace';
         ctx.textAlign = 'left';
-        ctx.fillText(`${mountSizeMm}mm Mount`, -mountPx/2, -mountPx/2 - 5);
+        ctx.fillText(`${mountSizeMm}mm`, -mountPx/2, -mountPx/2 - 5);
     }
     
     // --- Draw Aperture ---
@@ -173,14 +174,14 @@ const AperturePreview: React.FC<AperturePreviewProps> = ({
             }
             tempCtx.putImageData(idata, 0, 0);
             
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = 'rgba(14, 165, 233, 0.3)';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = 'rgba(14, 165, 233, 0.4)';
             ctx.drawImage(tempC, -radiusPx, -radiusPx);
             ctx.shadowBlur = 0;
         }
     } else {
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = 'rgba(14, 165, 233, 0.3)';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = 'rgba(14, 165, 233, 0.4)';
         drawAperture(ctx, scale, aperture, camera.wavelength, camera.focalLength);
         ctx.shadowBlur = 0;
     }
@@ -190,21 +191,21 @@ const AperturePreview: React.FC<AperturePreviewProps> = ({
     // Scale Bar
     const barWidthPx = 1.0 * scale; 
     
-    ctx.fillStyle = '#666';
-    ctx.fillRect(10, rect.height - 20, barWidthPx, 2);
-    ctx.fillStyle = '#888';
-    ctx.font = '10px monospace';
+    ctx.fillStyle = '#71717a';
+    ctx.fillRect(12, rect.height - 22, barWidthPx, 2);
+    ctx.fillStyle = '#a1a1aa';
+    ctx.font = '10px "JetBrains Mono", monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`1mm`, 10, rect.height - 25);
+    ctx.fillText(`1mm`, 12, rect.height - 28);
     
     if (aperture.type === ApertureType.FREEFORM) {
         ctx.textAlign = 'right';
-        ctx.fillStyle = isDrawing ? '#0ea5e9' : '#555';
-        ctx.fillText(isDrawing ? "DRAWING..." : "DRAW: CLICK & DRAG", rect.width - 10, 15);
+        ctx.fillStyle = isDrawing ? '#0ea5e9' : '#71717a';
+        ctx.fillText(isDrawing ? "DRAWING..." : "DRAW: CLICK & DRAG", rect.width - 12, 20);
     } else if (aperture.type === ApertureType.CUSTOM) {
         ctx.textAlign = 'right';
-        ctx.fillStyle = '#555';
-        ctx.fillText("CUSTOM IMPORT", rect.width - 10, 15);
+        ctx.fillStyle = '#71717a';
+        ctx.fillText("CUSTOM IMPORT", rect.width - 12, 20);
     }
 
   }, [aperture, camera, isDrawing, showOverlay, mountSizeMm, maskImgElement]);
@@ -270,17 +271,14 @@ const AperturePreview: React.FC<AperturePreviewProps> = ({
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
             style={{ width: '100%', height: '240px' }}
-            className={`block bg-mono-900 border border-gray-800 rounded-lg shadow-inner mb-4 ${aperture.type === ApertureType.FREEFORM ? 'cursor-crosshair' : 'cursor-default'}`}
+            className={`block bg-[#18181b] ${aperture.type === ApertureType.FREEFORM ? 'cursor-crosshair' : 'cursor-default'}`}
         />
         <button 
             onClick={() => setShowOverlay(!showOverlay)}
-            className="absolute top-2 left-2 px-2 py-1 bg-black/50 hover:bg-black/80 text-[10px] text-gray-400 rounded border border-gray-700 backdrop-blur-sm"
+            className="absolute top-3 left-3 px-2 py-1 bg-black/60 hover:bg-black/90 text-[10px] text-gray-400 rounded border border-white/10 backdrop-blur-sm transition-all"
         >
-            {showOverlay ? 'HIDE MOUNT' : 'SHOW MOUNT'}
+            {showOverlay ? 'Hide Mount' : 'Show Mount'}
         </button>
-        <div className="absolute top-2 right-2 text-[10px] text-gray-500 font-mono opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none">
-            {aperture.type === ApertureType.FREEFORM ? 'DRAW SHAPE' : 'VISUALIZATION'}
-        </div>
     </div>
   );
 };

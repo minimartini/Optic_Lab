@@ -6,15 +6,20 @@ import { CameraConfig, ApertureConfig, ApertureType, SimulationResult } from './
 import { calculatePhysics, DEFAULT_WAVELENGTH } from './utils/physics';
 import { generateLightSourceImage } from './utils/imageProcessing';
 
-// --- EMBEDDED WORKER CODE: WEBGPU & ASM PHYSICS ---
+// --- EMBEDDED WORKER CODE: CPU FFT CONVOLUTION ENGINE ---
 const WORKER_CODE = `
-// --- PHYSICS CONSTANTS & ENUMS ---
+// --- CONSTANTS ---
 const ApertureType = {
   PINHOLE: 'PINHOLE', ZONE_PLATE: 'ZONE_PLATE', PHOTON_SIEVE: 'PHOTON_SIEVE',
   SLIT: 'SLIT', CROSS: 'CROSS', SLIT_ARRAY: 'SLIT_ARRAY', RANDOM: 'RANDOM', ANNULAR: 'ANNULAR',
   MULTI_DOT: 'MULTI_DOT', STAR: 'STAR', WAVES: 'WAVES', YIN_YANG: 'YIN_YANG',
   URA: 'URA', FREEFORM: 'FREEFORM', FIBONACCI: 'FIBONACCI', FRACTAL: 'FRACTAL',
-  SIERPINSKI_TRIANGLE: 'SIERPINSKI_TRIANGLE', LITHO_OPC: 'LITHO_OPC', CUSTOM: 'CUSTOM'
+  SIERPINSKI_TRIANGLE: 'SIERPINSKI_TRIANGLE', LITHO_OPC: 'LITHO_OPC', 
+  LISSAJOUS: 'LISSAJOUS', SPIRAL: 'SPIRAL', ROSETTE: 'ROSETTE', CUSTOM: 'CUSTOM'
+};
+
+const MultiDotPattern = {
+  RING: 'RING', LINE: 'LINE', GRID: 'GRID', RANDOM: 'RANDOM', CONCENTRIC: 'CONCENTRIC'
 };
 
 const PHYSICS_CONSTANTS = {
@@ -22,7 +27,7 @@ const PHYSICS_CONSTANTS = {
   RGB_WAVELENGTHS: [640, 540, 460] 
 };
 
-// --- FFT LIBRARY (JS CPU) ---
+// --- FFT LIBRARY (Optimized JS CPU) ---
 class ComplexArray {
     constructor(n) {
         this.n = n;
@@ -32,6 +37,7 @@ class ComplexArray {
 }
 
 const FFT = {
+    // Radix-2 Cooley-Tukey FFT
     transform: (out, inverse) => {
         const n = out.n;
         const bits = Math.log2(n);
@@ -67,6 +73,7 @@ const FFT = {
         }
     },
     fft2D: (cArr, w, h, inverse) => {
+        // Rows
         for(let y=0; y<h; y++) {
             const row = new ComplexArray(w);
             const off = y*w;
@@ -74,6 +81,7 @@ const FFT = {
             FFT.transform(row, inverse);
             for(let x=0; x<w; x++) { cArr.real[off+x] = row.real[x]; cArr.imag[off+x] = row.imag[x]; }
         }
+        // Cols
         for(let x=0; x<w; x++) {
             const col = new ComplexArray(h);
             for(let y=0; y<h; y++) { col.real[y] = cArr.real[y*w+x]; col.imag[y] = cArr.imag[y*w+x]; }
@@ -82,586 +90,712 @@ const FFT = {
         }
     },
     fftShift: (cArr, w, h) => {
-        const halfW = Math.floor(w/2);
-        const halfH = Math.floor(h/2);
-        const tempR = new Float32Array(w*h), tempI = new Float32Array(w*h);
+        const halfW = w >>> 1;
+        const halfH = h >>> 1;
+        const tempR = new Float32Array(w*h);
+        const tempI = new Float32Array(w*h);
         for(let y=0; y<h; y++) {
             for(let x=0; x<w; x++) {
-                const newX = (x + halfW) % w, newY = (y + halfH) % h;
-                const iOld = y*w + x, iNew = newY*w + newX;
-                tempR[iNew] = cArr.real[iOld]; tempI[iNew] = cArr.imag[iOld];
+                const newX = (x + halfW) % w;
+                const newY = (y + halfH) % h;
+                const iOld = y*w + x;
+                const iNew = newY*w + newX;
+                tempR[iNew] = cArr.real[iOld];
+                tempI[iNew] = cArr.imag[iOld];
             }
         }
-        cArr.real.set(tempR); cArr.imag.set(tempI);
+        cArr.real.set(tempR);
+        cArr.imag.set(tempI);
     }
 };
 
-// --- ASM PHYSICS KERNEL GENERATOR ---
-const generateFresnelKernel = (camera, aperture, wavelength, pixelsPerMm, maskBitmap) => {
-    const lambdaMm = wavelength * PHYSICS_CONSTANTS.WAVELENGTH_TO_MM;
-    const z = camera.focalLength;
+const generateURA = (rank) => {
+    const p = rank;
+    const grid = new Int8Array(p * p);
     
-    // Determine smallest feature size to set correct Diffraction Window
-    // If we use 'diameter' for slits (length), the window is too small, aliasing the diffraction pattern.
-    let featureSize = aperture.diameter;
-    if ([ApertureType.SLIT, ApertureType.CROSS, ApertureType.SLIT_ARRAY, ApertureType.WAVES, ApertureType.YIN_YANG, ApertureType.LITHO_OPC].includes(aperture.type)) {
-        featureSize = aperture.slitWidth || 0.1;
-    } else if (aperture.type === ApertureType.URA) {
-        featureSize = (aperture.diameter / (aperture.uraRank || 13));
-    }
+    const isQuadraticResidue = (n, m) => {
+        if (n === 0) return 0;
+        for (let x = 1; x < m; x++) {
+            if ((x * x) % m === n) return 1;
+        }
+        return -1;
+    };
 
-    // Determine Simulation Window
-    // 40x buffer for diffraction spread based on smallest feature
-    const diffractiveSize = (40 * lambdaMm * z) / (featureSize || 0.1); 
-    
-    // Geometric footprint
-    let geometricSize = (aperture.diameter || 1.0) * 1.5;
-    if (aperture.type === ApertureType.SLIT_ARRAY) {
-       geometricSize = ((aperture.count || 2) * (aperture.spread || 1.0)) * 1.5 + (aperture.diameter);
-    }
-
-    const physSize = Math.max(geometricSize, diffractiveSize); 
-    
-    // Increased Resolution for better Geometric fidelity
-    let N = 256; 
-    const reqRes = physSize * pixelsPerMm;
-    if (reqRes > 256) N = 512;
-    if (reqRes > 512) N = 1024;
-    // Cap at 2048 for GPU memory safety
-    if (reqRes > 1024) N = 2048; 
-    
-    // 1. Draw Aperture
-    const canvas = new OffscreenCanvas(N, N);
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#000'; ctx.fillRect(0,0,N,N);
-    const simPixelsPerMm = N / physSize;
-    ctx.translate(N/2, N/2);
-    
-    drawAperture(ctx, simPixelsPerMm, aperture, wavelength, z, maskBitmap, true);
-    
-    ctx.translate(-N/2, -N/2);
-    const imgData = ctx.getImageData(0,0,N,N).data;
-    
-    // 2. Init Field
-    const field = new ComplexArray(N*N);
-    let totalIntensity = 0;
-    for(let i=0; i<N*N; i++) {
-        const val = imgData[i*4] / 255.0;
-        field.real[i] = val; 
-        totalIntensity += val;
-    }
-
-    if (!aperture.renderDiffraction) {
-         return { data: imgData, sum: Math.max(1, totalIntensity), width: N, height: N };
-    }
-
-    // 3. FFT -> Transfer Function -> IFFT
-    FFT.fft2D(field, N, N, false);
-    FFT.fftShift(field, N, N); 
-
-    const dk = 1.0 / physSize; 
-    const k = 2 * Math.PI / lambdaMm;
-    
-    for(let y=0; y<N; y++) {
-        const fy = (y - N/2) * dk;
-        for(let x=0; x<N; x++) {
-            const fx = (x - N/2) * dk;
-            const idx = y*N + x;
-            const val = 1.0 - (lambdaMm*fx)**2 - (lambdaMm*fy)**2;
-            
-            if (val >= 0) {
-                const phase = k * z * Math.sqrt(val);
-                const cosP = Math.cos(phase);
-                const sinP = Math.sin(phase);
-                const r = field.real[idx], i = field.imag[idx];
-                field.real[idx] = r*cosP - i*sinP;
-                field.imag[idx] = r*sinP + i*cosP;
+    for (let i = 0; i < p; i++) {
+        for (let j = 0; j < p; j++) {
+            if (i === 0) {
+                 grid[i*p + j] = 0;
+            } else if (j === 0) {
+                 grid[i*p + j] = 1;
             } else {
-                const decay = k * z * Math.sqrt(-val);
-                const ev = Math.exp(-decay);
-                field.real[idx] *= ev;
-                field.imag[idx] *= ev;
+                 const C_i = isQuadraticResidue(i, p);
+                 const C_j = isQuadraticResidue(j, p);
+                 grid[i*p + j] = (C_i * C_j) === 1 ? 1 : 0;
             }
         }
     }
-
-    FFT.fftShift(field, N, N); 
-    FFT.fft2D(field, N, N, true);
-
-    // 4. Output Packing
-    const output = new Uint8Array(N*N*4);
-    let totalEnergy = 0;
-    let maxVal = 0;
-    
-    const intensityMap = new Float32Array(N*N);
-    for(let i=0; i<N*N; i++) {
-        const magSq = field.real[i]**2 + field.imag[i]**2;
-        intensityMap[i] = magSq;
-        if(magSq > maxVal) maxVal = magSq;
-        totalEnergy += magSq;
-    }
-    
-    if (maxVal === 0) maxVal = 1;
-    
-    // We normalize to ensure that if we sum up all linear values in the texture, we get the total energy ratio.
-    let shaderSum = 0;
-    for(let i=0; i<N*N; i++) {
-        const val = intensityMap[i];
-        const norm = val / maxVal;
-        shaderSum += norm; 
-        
-        // Gamma 2.2 Encode for 8-bit Texture
-        const gammaVal = Math.pow(norm, 1.0/2.2);
-        const v8 = Math.min(255, Math.floor(gammaVal * 255));
-        output[i*4] = v8; output[i*4+1] = v8; output[i*4+2] = v8; output[i*4+3] = 255;
-    }
-    
-    if(shaderSum === 0) shaderSum = 1;
-
-    return { data: output, sum: shaderSum, width: N, height: N };
+    return grid;
 };
 
-// --- WEBGPU RENDERER ---
-class WebGPURenderer {
-    constructor() {
-        this.device = null;
-        this.context = null;
-        this.pipelines = {};
-    }
-
-    async init(width, height) {
-        if (!navigator.gpu) throw new Error("WebGPU not supported.");
-        const adapter = await navigator.gpu.requestAdapter();
-        if (!adapter) throw new Error("No WebGPU adapter found.");
-        this.device = await adapter.requestDevice();
-
-        this.canvas = new OffscreenCanvas(width, height);
-        this.context = this.canvas.getContext('webgpu');
-        this.presentationFormat = navigator.gpu.getPreferredCanvasFormat();
-        
-        this.context.configure({
-            device: this.device,
-            format: this.presentationFormat,
-            alphaMode: 'premultiplied',
-        });
-
-        this.width = width;
-        this.height = height;
-        
-        this.accumulationTexture = this.device.createTexture({
-            size: [width, height],
-            format: 'rgba16float',
-            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
-        });
-
-        this.linearSampler = this.device.createSampler({
-            magFilter: 'linear', minFilter: 'linear',
-        });
-
-        await this.initPipelines();
-    }
-
-    async initPipelines() {
-        const device = this.device;
-
-        // PIPELINE 1: SPLATTING (Scatter)
-        const splatModule = device.createShaderModule({
-            code: \`
-            struct Uniforms {
-                imgSize : vec2<f32>,
-                kernelSize : f32,
-                exposure : f32,
-                channel : vec3<f32>,
-            };
-            @group(0) @binding(0) var<uniform> u : Uniforms;
-            @group(0) @binding(1) var srcTex : texture_2d<f32>;
-            @group(0) @binding(2) var kernelTex : texture_2d<f32>;
-            @group(0) @binding(3) var mySampler : sampler;
-
-            struct VertexOutput {
-                @builtin(position) Position : vec4<f32>,
-                @location(0) uv : vec2<f32>,
-                @location(1) intensity : f32,
-            };
-
-            @vertex
-            fn vert(@builtin(vertex_index) vIdx : u32, @builtin(instance_index) iIdx : u32) -> VertexOutput {
-                var output : VertexOutput;
-                let w = u32(u.imgSize.x);
-                let srcX = iIdx % w;
-                let srcY = iIdx / w;
-                let srcColor = textureLoad(srcTex, vec2<i32>(i32(srcX), i32(srcY)), 0);
-                let intensity = dot(srcColor.rgb, u.channel); 
-
-                if (intensity < 0.001) {
-                    output.Position = vec4<f32>(0.0);
-                    return output;
-                }
-
-                var pos = vec2<f32>(0.0);
-                if (vIdx == 0u) { pos = vec2<f32>(-1.0, -1.0); output.uv = vec2<f32>(0.0, 1.0); }
-                else if (vIdx == 1u) { pos = vec2<f32>( 1.0, -1.0); output.uv = vec2<f32>(1.0, 1.0); }
-                else if (vIdx == 2u) { pos = vec2<f32>(-1.0,  1.0); output.uv = vec2<f32>(0.0, 0.0); }
-                else if (vIdx == 3u) { pos = vec2<f32>(-1.0,  1.0); output.uv = vec2<f32>(0.0, 0.0); }
-                else if (vIdx == 4u) { pos = vec2<f32>( 1.0, -1.0); output.uv = vec2<f32>(1.0, 1.0); }
-                else if (vIdx == 5u) { pos = vec2<f32>( 1.0,  1.0); output.uv = vec2<f32>(1.0, 0.0); }
-
-                let kernelScale = (u.kernelSize / u.imgSize) * 2.0; 
-                let pixelPosNDC = (vec2<f32>(f32(srcX)+0.5, f32(srcY)+0.5) / u.imgSize) * 2.0 - 1.0;
-                let finalPos = pixelPosNDC + pos * kernelScale * 0.5;
-                
-                output.Position = vec4<f32>(finalPos.x, -finalPos.y, 0.0, 1.0);
-                output.intensity = intensity;
-                return output;
-            }
-
-            @fragment
-            fn frag(@location(0) uv : vec2<f32>, @location(1) intensity : f32) -> @location(0) vec4<f32> {
-                let kRaw = textureSample(kernelTex, mySampler, uv).r;
-                let kLin = pow(kRaw, 2.2); 
-                let val = kLin * intensity * u.exposure;
-                return vec4<f32>(val * u.channel, 1.0); 
-            }
-            \`
-        });
-
-        this.pipelines.splat = device.createRenderPipeline({
-            layout: 'auto',
-            vertex: { module: splatModule, entryPoint: 'vert' },
-            fragment: {
-                module: splatModule, entryPoint: 'frag',
-                targets: [{
-                    format: 'rgba16float',
-                    blend: {
-                        color: { srcFactor: 'one', dstFactor: 'one', operation: 'add' },
-                        alpha: { srcFactor: 'one', dstFactor: 'one', operation: 'add' }
-                    }
-                }]
-            }
-        });
-
-        // PIPELINE 2: COMPOSITE (Tone Mapping)
-        const compModule = device.createShaderModule({
-            code: \`
-            @group(0) @binding(0) var accTex : texture_2d<f32>;
-            @group(0) @binding(1) var mySampler : sampler;
-
-            struct VertexOutput {
-                @builtin(position) Position : vec4<f32>,
-                @location(0) uv : vec2<f32>,
-            };
-
-            @vertex
-            fn vert(@builtin(vertex_index) vIdx : u32) -> VertexOutput {
-                var pos = vec2<f32>(0.0);
-                var uv = vec2<f32>(0.0);
-                if (vIdx == 0u) { pos = vec2<f32>(-1.0, -1.0); uv = vec2<f32>(0.0, 1.0); } 
-                else if (vIdx == 1u) { pos = vec2<f32>( 3.0, -1.0); uv = vec2<f32>(2.0, 1.0); } 
-                else if (vIdx == 2u) { pos = vec2<f32>(-1.0,  3.0); uv = vec2<f32>(0.0, -1.0); } 
-                var out : VertexOutput;
-                out.Position = vec4<f32>(pos, 0.0, 1.0);
-                out.uv = uv;
-                return out;
-            }
-
-            // ACES Tone Mapping
-            fn aces(x: vec3<f32>) -> vec3<f32> {
-                let a = 2.51;
-                let b = 0.03;
-                let c = 2.43;
-                let d = 0.59;
-                let e = 0.14;
-                return clamp((x * (a * x + b)) / (x * (c * x + d) + e), vec3<f32>(0.0), vec3<f32>(1.0));
-            }
-
-            @fragment
-            fn frag(@location(0) uv : vec2<f32>) -> @location(0) vec4<f32> {
-                let hdrColor = textureSample(accTex, mySampler, uv).rgb;
-                
-                // Apply ACES Filmic Tone Mapping to handle high dynamic range without hard clipping
-                let mapped = aces(hdrColor);
-                
-                // Gamma 2.2 Correction
-                let gamma = pow(mapped, vec3<f32>(1.0/2.2));
-                
-                let noise = fract(sin(dot(uv, vec2<f32>(12.9898, 78.233))) * 43758.5453) / 255.0;
-                
-                return vec4<f32>(gamma + noise, 1.0);
-            }
-            \`
-        });
-
-        this.pipelines.composite = device.createRenderPipeline({
-            layout: 'auto',
-            vertex: { module: compModule, entryPoint: 'vert' },
-            fragment: {
-                module: compModule, entryPoint: 'frag',
-                targets: [{ format: this.presentationFormat }]
-            }
-        });
-    }
-
-    render(srcData, kernels, exposure) {
-        const device = this.device;
-        const w = this.width;
-        const h = this.height;
-
-        const srcTexture = device.createTexture({
-            size: [w, h], format: 'rgba8unorm',
-            usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
-        });
-        device.queue.writeTexture({ texture: srcTexture }, srcData, { bytesPerRow: w * 4 }, { width: w, height: h });
-
-        const encoder = device.createCommandEncoder();
-        
-        const channels = [[1,0,0], [0,1,0], [0,0,1]];
-        const useKernels = [kernels[0], kernels.length > 1 ? kernels[1] : kernels[0], kernels.length > 1 ? kernels[2] : kernels[0]];
-
-        const passEncoder = encoder.beginRenderPass({
-            colorAttachments: [{
-                view: this.accumulationTexture.createView(),
-                clearValue: { r: 0, g: 0, b: 0, a: 1 },
-                loadOp: 'clear', storeOp: 'store'
-            }]
-        });
-
-        passEncoder.setPipeline(this.pipelines.splat);
-
-        const bindGroupLayout = this.pipelines.splat.getBindGroupLayout(0);
-
-        useKernels.forEach((kObj, i) => {
-            if(!kObj) return;
-
-            const kTex = device.createTexture({
-                size: [kObj.width, kObj.height], format: 'rgba8unorm',
-                usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
-            });
-            device.queue.writeTexture({ texture: kTex }, kObj.data, { bytesPerRow: kObj.width * 4 }, { width: kObj.width, height: kObj.height });
-
-            // Normalize exposure by the sum of kernel intensities.
-            // Shader Sum is calculated in generateFresnelKernel.
-            // This ensures that energy is conserved relative to the input image brightness.
-            const normExposure = (exposure / (kObj.sum || 1.0)); 
-
-            const uniformData = new Float32Array([
-                w, h,                   
-                kObj.width,             
-                normExposure,           
-                channels[i][0], channels[i][1], channels[i][2], 0 
-            ]);
-            
-            const uBuffer = device.createBuffer({
-                size: uniformData.byteLength, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-            });
-            device.queue.writeBuffer(uBuffer, 0, uniformData);
-
-            const bindGroup = device.createBindGroup({
-                layout: bindGroupLayout,
-                entries: [
-                    { binding: 0, resource: { buffer: uBuffer } },
-                    { binding: 1, resource: srcTexture.createView() },
-                    { binding: 2, resource: kTex.createView() },
-                    { binding: 3, resource: this.linearSampler }
-                ]
-            });
-
-            passEncoder.setBindGroup(0, bindGroup);
-            passEncoder.draw(6, w * h, 0, 0); 
-        });
-
-        passEncoder.end();
-
-        const compPass = encoder.beginRenderPass({
-            colorAttachments: [{
-                view: this.context.getCurrentTexture().createView(),
-                clearValue: { r: 0, g: 0, b: 0, a: 1 },
-                loadOp: 'clear', storeOp: 'store'
-            }]
-        });
-
-        compPass.setPipeline(this.pipelines.composite);
-        const compBG = device.createBindGroup({
-            layout: this.pipelines.composite.getBindGroupLayout(0),
-            entries: [
-                { binding: 0, resource: this.accumulationTexture.createView() },
-                { binding: 1, resource: this.linearSampler }
-            ]
-        });
-        compPass.setBindGroup(0, compBG);
-        compPass.draw(3, 1, 0, 0);
-        compPass.end();
-
-        device.queue.submit([encoder.finish()]);
-
-        return this.canvas.transferToImageBitmap();
-    }
-}
-
-// --- UTILITIES (Shared) ---
-const drawAperture = (ctx, scale, aperture, wavelength, focalLength, maskBitmap, isSimulation) => {
+// --- DRAWING UTILS ---
+const drawAperture = (ctx, scale, aperture, maskBitmap, isSimulation, wavelength, focalLength) => {
   ctx.save();
   ctx.rotate((aperture.rotation || 0) * Math.PI / 180);
   const lambda = wavelength * PHYSICS_CONSTANTS.WAVELENGTH_TO_MM;
   const radiusPx = (aperture.diameter * scale) / 2;
   ctx.fillStyle = '#fff';
   
-  // CRITICAL: Ensure minimum size for simulation to prevent aliasing dropout for slits/pinholes
-  // 1.5px ensures at least some pixels are hit on the grid
-  const minSize = isSimulation ? 1.5 : 0; 
+  // Anti-aliasing guard: Ensure lines are at least 1px wide for simulation
+  const minSize = isSimulation ? 1.0 : 0; 
   
   let seed = aperture.seed || 12345;
   const random = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
 
-  const type = aperture.type;
-  
-  if(type === ApertureType.PINHOLE) { 
-      const r = Math.max(minSize, radiusPx);
-      ctx.beginPath(); ctx.arc(0,0, r, 0,Math.PI*2); ctx.fill(); 
-  }
-  else if(type === ApertureType.CUSTOM && maskBitmap) { 
-      const d = aperture.diameter*scale; 
-      if (d < minSize*2) { ctx.beginPath(); ctx.arc(0,0, minSize, 0, Math.PI*2); ctx.fill(); } 
-      else { ctx.drawImage(maskBitmap, -d/2, -d/2, d, d); }
-  }
-  else if(type === ApertureType.URA) {
-     const rank = aperture.uraRank || 13;
-     const cellSize = (aperture.diameter * scale) / rank;
-     // Helper for URA (Replicated from main thread logic)
-     const isQR = (n, m) => { if (n===0) return 0; for(let x=1;x<m;x++) if((x*x)%m===n) return 1; return -1; };
-     const offset = (aperture.diameter * scale)/2;
-     for(let i=0; i<rank; i++) {
-         for(let j=0; j<rank; j++) {
-             let val = 0;
-             if (i===0) val=0; else if(j===0) val=1; else val=(isQR(i,rank)*isQR(j,rank)===1)?1:0;
-             if(val===1) ctx.fillRect(j*cellSize - offset, i*cellSize - offset, cellSize, cellSize);
-         }
-     }
-  }
-  else if(type === ApertureType.LITHO_OPC) {
-      const cd = (aperture.diameter || 1.0) * scale;
-      const height = cd * 5; 
-      ctx.fillRect(-cd/2, -height/2, cd, height);
-      const srafWidth = Math.max(minSize, (aperture.slitWidth || cd*0.25) * scale);
-      const srafDist = (aperture.spread || 1.0) * scale; 
-      const leftX = -cd/2 - srafDist - srafWidth;
-      const rightX = cd/2 + srafDist;
-      ctx.fillRect(leftX, -height/2, srafWidth, height);
-      ctx.fillRect(rightX, -height/2, srafWidth, height);
-  }
-  else if(type === ApertureType.SLIT_ARRAY) {
-       // Young's Double Slit / Diffraction Grating
-       const n = Math.max(2, aperture.count || 2);
-       const w = Math.max(minSize, (aperture.slitWidth || 0.1) * scale);
-       const h = (aperture.diameter || 5.0) * scale;
-       const spacing = (aperture.spread || 0.5) * scale; 
-       
-       const totalWidth = (n - 1) * spacing;
-       const startX = -totalWidth / 2;
-       
-       for(let i=0; i<n; i++) {
-           ctx.fillRect(startX + i*spacing - w/2, -h/2, w, h);
-       }
-  }
-  else if(type === ApertureType.SLIT) {
-      const w = Math.max(minSize, (aperture.slitWidth || 0.2) * scale);
-      const h = (aperture.diameter || 5.0) * scale;
-      ctx.fillRect(-h/2, -w/2, h, w);
-  }
-  else if(type === ApertureType.CROSS) {
-      const w = Math.max(minSize, (aperture.slitWidth || 0.5) * scale);
-      const len = (aperture.diameter) * scale; 
-      ctx.fillRect(-w/2, -len/2, w, len);
-      ctx.fillRect(-len/2, -w/2, len, w);
-  }
-  else if(type === ApertureType.ZONE_PLATE) {
-      const maxN = Math.floor(Math.pow(aperture.diameter/2, 2) / (lambda * focalLength));
-      if (aperture.zonePlateProfile === 'SINUSOIDAL') {
-          // Approximate Newton's Rings / Sinusoidal Zone Plate
+  switch(aperture.type) {
+    case ApertureType.PINHOLE: 
+        const r = Math.max(minSize, radiusPx);
+        ctx.beginPath(); ctx.arc(0,0, r, 0,Math.PI*2); ctx.fill(); 
+        break;
+
+    case ApertureType.CUSTOM:
+        if(maskBitmap) { 
+            const d = aperture.diameter*scale; 
+            ctx.drawImage(maskBitmap, -d/2, -d/2, d, d); 
+        }
+        break;
+
+    case ApertureType.URA:
+        {
+            const rank = aperture.uraRank || 13;
+            const cellSize = (aperture.diameter * scale) / rank;
+            const grid = generateURA(rank);
+            const offset = (aperture.diameter * scale) / 2;
+            
+            for(let i=0; i<rank; i++) {
+                for(let j=0; j<rank; j++) {
+                    if (grid[i*rank + j] === 1) {
+                        ctx.fillRect(j*cellSize - offset, i*cellSize - offset, cellSize, cellSize);
+                    }
+                }
+            }
+        }
+        break;
+
+    case ApertureType.ZONE_PLATE:
+        {
+          const maxN = Math.floor(Math.pow(aperture.diameter/2, 2) / (lambda * focalLength));
           const maxR = (aperture.diameter * scale) / 2;
-          const stepSize = 0.5; // px
-          for(let r=0; r<maxR; r+=stepSize) {
-               const r_mm = r / scale;
-               const phase = (Math.PI * r_mm * r_mm) / (lambda * focalLength);
-               const transmission = (1 + Math.cos(phase)) / 2;
-               ctx.beginPath();
-               ctx.arc(0, 0, r, 0, Math.PI*2);
-               ctx.strokeStyle = \`rgba(255, 255, 255, \${transmission})\`;
-               ctx.lineWidth = stepSize + 0.1;
-               ctx.stroke();
+
+          if (aperture.zonePlateProfile === 'SPIRAL') {
+              const stepSize = 0.5; 
+              for(let r=0; r<maxR; r+=stepSize) {
+                   const circumference = 2 * Math.PI * r;
+                   const dTheta = 1.0 / Math.max(1, circumference); 
+                   
+                   for(let theta=0; theta<Math.PI*2; theta+=dTheta) {
+                       const r_mm = r / scale;
+                       // Simplified Spiral Logic for Intensity Mask
+                       const phase = (Math.PI * r_mm * r_mm) / (lambda * focalLength) + theta;
+                       if (Math.cos(phase) > 0) {
+                            ctx.fillRect(r*Math.cos(theta), r*Math.sin(theta), 1.5, 1.5);
+                       }
+                   }
+              }
+          } 
+          else if (aperture.zonePlateProfile === 'SINUSOIDAL') {
+              const stepSize = 0.5; // px
+              for(let r=0; r<maxR; r+=stepSize) {
+                   const r_mm = r / scale;
+                   const phase = (Math.PI * r_mm * r_mm) / (lambda * focalLength);
+                   const transmission = (1 + Math.cos(phase)) / 2;
+                   
+                   ctx.beginPath();
+                   ctx.arc(0, 0, r, 0, Math.PI*2);
+                   ctx.strokeStyle = "rgba(255, 255, 255, " + transmission + ")";
+                   ctx.lineWidth = stepSize + 0.1;
+                   ctx.stroke();
+              }
+          } else {
+              // Binary
+              for (let n = Math.max(1, maxN); n >= 1; n--) {
+                const r_px = Math.sqrt(n * lambda * focalLength) * scale;
+                ctx.beginPath(); ctx.arc(0, 0, r_px, 0, Math.PI * 2);
+                ctx.fillStyle = n % 2 === 1 ? '#fff' : '#000';
+                ctx.fill();
+              }
           }
-      } else {
-          for (let n = Math.max(1, maxN); n >= 1; n--) {
-            const r_px = Math.sqrt(n * lambda * focalLength) * scale;
-            ctx.beginPath(); ctx.arc(0, 0, r_px, 0, Math.PI * 2);
-            ctx.fillStyle = n % 2 === 1 ? '#fff' : '#000';
+        }
+        break;
+
+    case ApertureType.PHOTON_SIEVE:
+        {
+           const sieveZones = aperture.zones || 15;
+           const maxSieveR = aperture.diameter / 2;
+           for (let n = 1; n <= sieveZones * 4; n++) {
+               const r_center_mm = Math.sqrt((n + 0.5) * lambda * focalLength);
+               const r_width_mm = Math.sqrt((n + 1) * lambda * focalLength) - Math.sqrt(n * lambda * focalLength);
+               if (r_center_mm > maxSieveR) break;
+               if (n % 2 === 0) continue;
+               const hole_d = 1.53 * r_width_mm; 
+               const hole_r_px = (hole_d * scale) / 2;
+               if (hole_r_px < 0.2) continue; 
+               const r_px = r_center_mm * scale;
+               const circumference = 2 * Math.PI * r_center_mm;
+               const numHoles = Math.floor((circumference / (hole_d * 1.5))); 
+               for(let k=0; k<numHoles; k++) {
+                   const theta = (k / numHoles) * Math.PI * 2 + (random() * 0.5);
+                   ctx.beginPath(); ctx.arc(r_px * Math.cos(theta), r_px * Math.sin(theta), hole_r_px, 0, Math.PI*2); ctx.fill();
+               }
+           }
+        }
+        break;
+
+    case ApertureType.SLIT_ARRAY:
+        {
+           const n = Math.max(2, aperture.count || 2);
+           const w = Math.max(minSize, (aperture.slitWidth || 0.1) * scale);
+           const h = (aperture.diameter || 5.0) * scale;
+           const spacing = (aperture.spread || 0.5) * scale; 
+           const totalWidth = (n - 1) * spacing;
+           const startX = -totalWidth / 2;
+           for(let i=0; i<n; i++) {
+               ctx.fillRect(startX + i*spacing - w/2, -h/2, w, h);
+           }
+        }
+        break;
+
+    case ApertureType.SLIT:
+        {
+            const w = Math.max(minSize, (aperture.slitWidth || 0.2) * scale);
+            const h = (aperture.diameter || 5.0) * scale;
+            ctx.fillRect(-h/2, -w/2, h, w);
+        }
+        break;
+
+    case ApertureType.CROSS:
+        {
+            const w = Math.max(minSize, (aperture.slitWidth || 0.5) * scale);
+            const len = (aperture.diameter) * scale; 
+            ctx.fillRect(-w/2, -len/2, w, len);
+            ctx.fillRect(-len/2, -w/2, len, w);
+        }
+        break;
+
+    case ApertureType.ANNULAR:
+        {
+          const rOut = (aperture.diameter * scale) / 2;
+          const id = aperture.innerDiameter !== undefined ? aperture.innerDiameter : aperture.diameter * 0.5;
+          const rIn = (id * scale) / 2;
+          ctx.beginPath(); 
+          ctx.arc(0, 0, Math.max(0, rOut), 0, Math.PI*2); 
+          ctx.arc(0, 0, Math.max(0, rIn), 0, Math.PI*2, true); 
+          ctx.fill();
+        }
+        break;
+
+    case ApertureType.STAR:
+        {
+            const spikes = aperture.spikes || 5;
+            const outerRadius = (aperture.diameter * scale) / 2;
+            const irVal = aperture.innerDiameter !== undefined ? aperture.innerDiameter : aperture.diameter * 0.4;
+            const innerRadius = (irVal * scale) / 2;
+            let rot = Math.PI / 2 * 3;
+            const step = Math.PI / spikes;
+            ctx.beginPath();
+            ctx.moveTo(0, -outerRadius); 
+            for (let i = 0; i < spikes; i++) {
+                ctx.lineTo(Math.cos(rot) * outerRadius, Math.sin(rot) * outerRadius);
+                rot += step;
+                ctx.lineTo(Math.cos(rot) * innerRadius, Math.sin(rot) * innerRadius);
+                rot += step;
+            }
+            ctx.lineTo(0, -outerRadius);
+            ctx.closePath();
             ctx.fill();
-          }
-      }
-  }
-  else {
-      // Fallback to simple circle for others in worker to save space
-      const r = Math.max(minSize, radiusPx);
-      ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill(); 
+        }
+        break;
+
+    case ApertureType.WAVES: 
+    case ApertureType.YIN_YANG:
+        {
+            const width = (aperture.diameter || 10) * scale;
+            const thickness = Math.max(minSize, (aperture.slitWidth || 0.1) * scale);
+            const amplitude = (aperture.slitHeight || 2.0) * scale;
+            const waves = aperture.count || 1;
+            
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = thickness;
+            ctx.strokeStyle = '#fff';
+            
+            ctx.beginPath();
+            const steps = 100 * waves;
+            let first = true;
+            for (let i=0; i<=steps; i++) {
+                const xNorm = i/steps; 
+                const x = (xNorm - 0.5) * width;
+                const angle = xNorm * Math.PI * 2 * waves;
+                const y = (amplitude/2) * Math.sin(angle);
+                if (first) { ctx.moveTo(x,y); first=false; }
+                else ctx.lineTo(x,y);
+            }
+            ctx.stroke();
+
+            if (aperture.type === ApertureType.YIN_YANG) {
+                const dotR = (aperture.innerDiameter || 0.2) * scale / 2;
+                ctx.fillStyle = '#fff';
+                for(let w=0; w<waves; w++) {
+                    const peakXNorm = (w + 0.25) / waves;
+                    const troughXNorm = (w + 0.75) / waves;
+                    const px = (peakXNorm - 0.5) * width;
+                    const tx = (troughXNorm - 0.5) * width;
+                    ctx.beginPath(); ctx.arc(px, 0, Math.max(minSize/2, dotR), 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(tx, 0, Math.max(minSize/2, dotR), 0, Math.PI*2); ctx.fill();
+                }
+            }
+        }
+        break;
+
+    case ApertureType.MULTI_DOT:
+    case ApertureType.FIBONACCI: 
+    case ApertureType.RANDOM:
+        {
+            const count = Math.max(1, aperture.count || 8);
+            const spread = (aperture.spread || 2.0) * scale; 
+            const dotR = (aperture.diameter || 0.2) * scale / 2;
+            const pattern = aperture.multiDotPattern || MultiDotPattern.RING;
+            
+            if (aperture.centerDot) {
+                ctx.beginPath(); ctx.arc(0, 0, dotR, 0, Math.PI*2); ctx.fill();
+            }
+
+            if (aperture.type === ApertureType.FIBONACCI) {
+                 const points = aperture.count || 50;
+                 const maxRad = (aperture.spread || 2.0) * scale;
+                 const fDotR = (aperture.diameter || 0.1) * scale / 2;
+                 const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+                 for (let i = 0; i < points; i++) {
+                    const r = maxRad * Math.sqrt(i / points);
+                    const theta = i * goldenAngle;
+                    ctx.beginPath(); ctx.arc(r * Math.cos(theta), r * Math.sin(theta), fDotR, 0, Math.PI*2); ctx.fill();
+                 }
+            } else if (aperture.type === ApertureType.RANDOM || pattern === MultiDotPattern.RANDOM) {
+                 for(let i=0; i<count; i++) {
+                      const r = spread * Math.sqrt(random());
+                      const th = 2 * Math.PI * random();
+                      const s = aperture.type === ApertureType.RANDOM ? dotR * (0.5 + 1.5*random()) : dotR; 
+                      ctx.beginPath(); ctx.arc(r*Math.cos(th), r*Math.sin(th), s, 0, Math.PI*2); ctx.fill();
+                 }
+            } else if (pattern === MultiDotPattern.RING) {
+                for(let i=0; i<count; i++) {
+                    const theta = (i/count) * Math.PI*2;
+                    ctx.beginPath(); ctx.arc(spread*Math.cos(theta), spread*Math.sin(theta), dotR, 0, Math.PI*2); ctx.fill();
+                }
+            } else if (pattern === MultiDotPattern.GRID) {
+                const side = Math.ceil(Math.sqrt(count));
+                const spacing = spread * 2 / Math.max(1, side - 1);
+                const start = -(side-1)*spacing/2;
+                let drawn = 0;
+                for(let r=0; r<side; r++) {
+                    for(let c=0; c<side; c++) {
+                        if(drawn >= count) break;
+                        ctx.beginPath(); ctx.arc(start + c*spacing, start + r*spacing, dotR, 0, Math.PI*2); ctx.fill();
+                        drawn++;
+                    }
+                }
+            } else if (pattern === MultiDotPattern.CONCENTRIC) {
+                const rings = 5;
+                for(let r=1; r<=rings; r++) {
+                     const rad = (r/rings) * spread;
+                     const dotsInThisRing = Math.max(3, Math.floor(count * (r/((rings*(rings+1))/2)))); 
+                     for(let k=0; k<dotsInThisRing; k++) {
+                         const th = (k/dotsInThisRing) * Math.PI*2 + (r % 2) * (Math.PI/dotsInThisRing);
+                         ctx.beginPath(); ctx.arc(rad*Math.cos(th), rad*Math.sin(th), dotR, 0, Math.PI*2); ctx.fill();
+                     }
+                }
+            } else if (pattern === MultiDotPattern.LINE) {
+                 const step = (spread * 2) / Math.max(1, count - 1);
+                 const start = -spread;
+                 for(let i=0; i<count; i++) {
+                     ctx.beginPath(); ctx.arc(start + i*step, 0, dotR, 0, Math.PI*2); ctx.fill();
+                 }
+            }
+        }
+        break;
+
+    case ApertureType.FRACTAL:
+        {
+            const fSize = (aperture.spread || 10) * scale;
+            const iter = Math.min(5, aperture.iteration || 3);
+            const drawCarpet = (x, y, s, depth) => {
+                if (depth === 0) {
+                    ctx.fillRect(x - s/2, y - s/2, s, s);
+                    return;
+                }
+                const newS = s / 3;
+                if (newS < 0.5) { ctx.fillRect(x - s/2, y - s/2, s, s); return; }
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        if (dx === 0 && dy === 0) continue; 
+                        drawCarpet(x + dx * newS, y + dy * newS, newS, depth - 1);
+                    }
+                }
+            };
+            drawCarpet(0, 0, fSize, iter);
+        }
+        break;
+
+    case ApertureType.SIERPINSKI_TRIANGLE:
+         {
+             const sTrSize = (aperture.spread || 5.0) * scale;
+             const sTrIter = Math.min(6, aperture.iteration || 3);
+             const R = sTrSize / Math.sqrt(3);
+             const p1 = { x: 0, y: -R };
+             const p2 = { x: sTrSize/2, y: R/2 };
+             const p3 = { x: -sTrSize/2, y: R/2 };
+             const drawTri = (v1, v2, v3, depth) => {
+                 if (depth === 0) {
+                     ctx.beginPath();
+                     ctx.moveTo(v1.x, v1.y);
+                     ctx.lineTo(v2.x, v2.y);
+                     ctx.lineTo(v3.x, v3.y);
+                     ctx.fill();
+                     return;
+                 }
+                 const m12 = { x: (v1.x + v2.x)/2, y: (v1.y + v2.y)/2 };
+                 const m23 = { x: (v2.x + v3.x)/2, y: (v2.y + v3.y)/2 };
+                 const m31 = { x: (v3.x + v1.x)/2, y: (v3.y + v1.y)/2 };
+                 const dist = Math.sqrt((v1.x-v2.x)**2 + (v1.y-v2.y)**2);
+                 if (dist < 1) { 
+                     ctx.beginPath();
+                     ctx.moveTo(v1.x, v1.y);
+                     ctx.lineTo(v2.x, v2.y);
+                     ctx.lineTo(v3.x, v3.y);
+                     ctx.fill();
+                     return;
+                 }
+                 drawTri(v1, m12, m31, depth - 1);
+                 drawTri(m12, v2, m23, depth - 1);
+                 drawTri(m31, m23, v3, depth - 1);
+             };
+             drawTri(p1, p2, p3, sTrIter);
+         }
+         break;
+         
+    case ApertureType.FREEFORM:
+         if (aperture.customPath && aperture.customPath.length > 0) {
+              const ffScale = (aperture.diameter || 10) * scale; 
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.lineWidth = (aperture.brushSize || 0.5) * scale;
+              ctx.strokeStyle = '#fff';
+              ctx.beginPath();
+              let penDown = false;
+              for(let i=0; i<aperture.customPath.length; i++) {
+                  const p = aperture.customPath[i];
+                  if (isNaN(p.x)) {
+                      penDown = false;
+                      ctx.stroke(); ctx.beginPath();
+                      continue;
+                  }
+                  const px = p.x * (ffScale/2);
+                  const py = p.y * (ffScale/2);
+                  if (!penDown) { ctx.moveTo(px, py); penDown = true; } else { ctx.lineTo(px, py); }
+              }
+              ctx.stroke();
+         }
+         break;
+         
+    case ApertureType.LITHO_OPC:
+        {
+             const cd = (aperture.diameter || 1.0) * scale; 
+             const height = cd * 5; 
+             ctx.fillRect(-cd/2, -height/2, cd, height);
+             const srafWidth = (aperture.slitWidth || cd*0.25) * scale;
+             const srafDist = (aperture.spread || 1.0) * scale; 
+             const leftX = -cd/2 - srafDist - srafWidth;
+             const rightX = cd/2 + srafDist;
+             ctx.fillRect(leftX, -height/2, srafWidth, height);
+             ctx.fillRect(rightX, -height/2, srafWidth, height);
+        }
+        break;
+
+    case ApertureType.LISSAJOUS:
+         {
+             const rx = aperture.lissajousRX || 3;
+             const ry = aperture.lissajousRY || 2;
+             const delta = (aperture.lissajousDelta || 0) * (Math.PI/180);
+             const r = (aperture.diameter * scale) / 2;
+             const thickness = Math.max(minSize, (aperture.slitWidth || 0.1) * scale);
+             
+             ctx.lineCap = 'round';
+             ctx.lineJoin = 'round';
+             ctx.lineWidth = thickness;
+             ctx.strokeStyle = '#fff';
+             
+             ctx.beginPath();
+             const steps = 500;
+             for(let i=0; i<=steps; i++) {
+                 const t = (i/steps) * Math.PI * 2;
+                 const x = r * Math.sin(rx * t + delta);
+                 const y = r * Math.sin(ry * t);
+                 if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+             }
+             ctx.stroke();
+         }
+         break;
+
+    case ApertureType.SPIRAL:
+         {
+             const arms = Math.max(1, aperture.spiralArms || 1);
+             const turns = aperture.spiralTurns || 3;
+             const maxR = (aperture.diameter * scale) / 2;
+             const thickness = Math.max(minSize, (aperture.slitWidth || 0.1) * scale);
+             
+             ctx.lineCap = 'round';
+             ctx.lineJoin = 'round';
+             ctx.lineWidth = thickness;
+             ctx.strokeStyle = '#fff';
+             
+             const angleStep = (Math.PI*2) / arms;
+             
+             for(let a=0; a<arms; a++) {
+                 const startAngle = a * angleStep;
+                 ctx.beginPath();
+                 const steps = 100 * turns;
+                 for(let i=0; i<=steps; i++) {
+                     const t = i/steps; // 0 to 1
+                     const r = t * maxR;
+                     const theta = startAngle + (t * Math.PI * 2 * turns);
+                     const x = r * Math.cos(theta);
+                     const y = r * Math.sin(theta);
+                     if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+                 }
+                 ctx.stroke();
+             }
+         }
+         break;
+
+    case ApertureType.ROSETTE:
+         {
+             const petals = aperture.rosettePetals || 5;
+             const rBase = (aperture.diameter * scale) / 2;
+             const amp = (aperture.slitHeight || rBase * 0.3) * scale;
+             const thickness = Math.max(minSize, (aperture.slitWidth || 0.1) * scale);
+             
+             ctx.lineCap = 'round';
+             ctx.lineJoin = 'round';
+             ctx.lineWidth = thickness;
+             ctx.strokeStyle = '#fff';
+             
+             ctx.beginPath();
+             const steps = 360;
+             for(let i=0; i<=steps; i++) {
+                 const theta = (i/steps) * Math.PI * 2;
+                 const r = rBase + amp * Math.cos(petals * theta);
+                 const x = r * Math.cos(theta);
+                 const y = r * Math.sin(theta);
+                 if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+             }
+             ctx.closePath();
+             ctx.stroke();
+         }
+         break;
+
+    default:
+      const radius = Math.max(minSize, radiusPx);
+      ctx.beginPath(); ctx.arc(0,0, radius, 0, Math.PI * 2); ctx.fill();
+      break;
   }
   ctx.restore();
 };
 
-// --- WORKER MESSAGE HANDLER ---
-let renderer = null;
-
+// --- MAIN WORKER LOGIC ---
 self.onmessage = async (e) => {
   const { camera, aperture, imageData, exposure, maskBitmap } = e.data;
   
   try {
-      // Increased Resolution for Physics Accuracy
-      const processingWidth = 1024; 
-      let w = imageData.width;
-      let h = imageData.height;
-      
-      if (w > processingWidth) {
-          const scale = processingWidth / w;
-          w = processingWidth;
-          h = Math.round(imageData.height * scale);
-      }
-      
-      const tempC = new OffscreenCanvas(w, h);
+      // 1. Resize Image to Power of 2 (1024) for efficient FFT
+      const N = 1024; 
+      const tempC = new OffscreenCanvas(N, N);
       const tempCtx = tempC.getContext('2d');
-      tempCtx.fillStyle = '#000'; tempCtx.fillRect(0,0,w,h);
       
-      if (w !== imageData.width) {
-         const bmp = await createImageBitmap(imageData);
-         tempCtx.drawImage(bmp, 0, 0, w, h);
-         bmp.close();
-      } else {
-         tempCtx.putImageData(imageData, 0, 0);
+      // Black background
+      tempCtx.fillStyle = '#000'; 
+      tempCtx.fillRect(0,0,N,N);
+      
+      // Draw Input Image Scaled
+      const bmp = await createImageBitmap(imageData);
+      // Center crop or fit? Fit is better for simulation context
+      const scale = Math.min(N/bmp.width, N/bmp.height);
+      const drawW = bmp.width * scale;
+      const drawH = bmp.height * scale;
+      const offX = (N - drawW)/2;
+      const offY = (N - drawH)/2;
+      tempCtx.drawImage(bmp, offX, offY, drawW, drawH);
+      bmp.close();
+      
+      const srcData = tempCtx.getImageData(0,0,N,N).data;
+      
+      // 2. Prepare Frequency Domain Accumulators
+      const resultR = new Float32Array(N*N);
+      const resultG = new Float32Array(N*N);
+      const resultB = new Float32Array(N*N);
+      
+      const wavelengths = aperture.usePolychromatic ? PHYSICS_CONSTANTS.RGB_WAVELENGTHS : [camera.wavelength, camera.wavelength, camera.wavelength];
+      
+      // Pixels Per Millimeter on the simulation grid
+      // Sensor covers 1024 pixels. 
+      const pixelsPerMm = N / Math.max(camera.sensorWidth, camera.sensorHeight);
+
+      // 3. Process each channel
+      const channels = ['r', 'g', 'b'];
+      
+      for(let c=0; c<3; c++) {
+          const wl = wavelengths[c];
+          const lambdaMm = wl * 1e-6;
+          
+          // --- A. Generate PSF (Point Spread Function) ---
+          // Draw Aperture
+          tempCtx.fillStyle = '#000'; tempCtx.fillRect(0,0,N,N);
+          tempCtx.translate(N/2, N/2);
+          drawAperture(tempCtx, pixelsPerMm, aperture, maskBitmap, true, wl, camera.focalLength);
+          tempCtx.translate(-N/2, -N/2);
+          const apData = tempCtx.getImageData(0,0,N,N).data;
+          
+          // Field Complex Array
+          const field = new ComplexArray(N*N);
+          for(let i=0; i<N*N; i++) field.real[i] = apData[i*4]/255.0; // Red channel is enough for mask
+          
+          if (aperture.renderDiffraction) {
+             // Shift Center
+             FFT.fftShift(field, N, N);
+             // FFT -> Freq Domain
+             FFT.fft2D(field, N, N, false);
+             
+             // Angular Spectrum Propagation
+             const z = camera.focalLength;
+             const dk = 1.0 / (N/pixelsPerMm); // 1 / physical_size
+             const k = 2 * Math.PI / lambdaMm;
+             
+             for(let y=0; y<N; y++) {
+                const fy = (y - N/2) * dk;
+                const fysq = fy*fy;
+                for(let x=0; x<N; x++) {
+                    const fx = (x - N/2) * dk;
+                    const idx = y*N + x;
+                    const val = 1.0 - (lambdaMm*fx)**2 - (lambdaMm*fy)**2;
+                    
+                    if (val >= 0) {
+                        const phase = k * z * Math.sqrt(val);
+                        const cosP = Math.cos(phase);
+                        const sinP = Math.sin(phase);
+                        const r = field.real[idx]; 
+                        const i = field.imag[idx];
+                        // Multiply by exp(i * phase)
+                        field.real[idx] = r*cosP - i*sinP;
+                        field.imag[idx] = r*sinP + i*cosP;
+                    } else {
+                         // Evanescent
+                         field.real[idx] = 0; field.imag[idx] = 0;
+                    }
+                }
+             }
+             // IFFT -> Spatial Domain Field at Sensor
+             FFT.fft2D(field, N, N, true);
+             FFT.fftShift(field, N, N);
+          }
+          
+          // Compute PSF (Intensity = MagSq)
+          const psf = new ComplexArray(N*N); // Complex for FFT later
+          let totalEnergy = 0;
+          for(let i=0; i<N*N; i++) {
+              const magSq = field.real[i]**2 + field.imag[i]**2;
+              psf.real[i] = magSq;
+              psf.imag[i] = 0;
+              totalEnergy += magSq;
+          }
+          
+          // Normalize PSF (Auto-Exposure: Total energy = 1)
+          if(totalEnergy > 0) {
+              const inv = 1.0 / totalEnergy;
+              for(let i=0; i<N*N; i++) psf.real[i] *= inv;
+          } else {
+              // Fallback for empty aperture
+              psf.real[N/2 * N + N/2] = 1.0; 
+          }
+          
+          // --- B. Prepare Image Channel ---
+          const imgC = new ComplexArray(N*N);
+          const offset = (c === 0 ? 0 : c === 1 ? 1 : 2);
+          for(let i=0; i<N*N; i++) {
+               // sRGB -> Linear
+               const sVal = srcData[i*4 + offset] / 255.0;
+               imgC.real[i] = Math.pow(sVal, 2.2); 
+               imgC.imag[i] = 0;
+          }
+          
+          // --- C. FFT Convolution ---
+          // FFT(PSF) -> OTF
+          FFT.fftShift(psf, N, N); // Center peak at 0,0 for convolution
+          FFT.fft2D(psf, N, N, false);
+          
+          // FFT(Image)
+          FFT.fft2D(imgC, N, N, false);
+          
+          // Multiply: Img * OTF
+          for(let i=0; i<N*N; i++) {
+              const r1 = imgC.real[i], i1 = imgC.imag[i];
+              const r2 = psf.real[i], i2 = psf.imag[i];
+              imgC.real[i] = r1*r2 - i1*i2;
+              imgC.imag[i] = r1*i2 + i1*r2;
+          }
+          
+          // IFFT -> Result
+          FFT.fft2D(imgC, N, N, true);
+          // Result is in imgC.real
+          
+          if (c===0) for(let i=0; i<N*N; i++) resultR[i] = imgC.real[i];
+          if (c===1) for(let i=0; i<N*N; i++) resultG[i] = imgC.real[i];
+          if (c===2) for(let i=0; i<N*N; i++) resultB[i] = imgC.real[i];
       }
 
-      const resizedData = tempCtx.getImageData(0,0,w,h).data;
-      const pixelsPerMm = w / camera.sensorWidth;
-
-      const kernels = [];
-      const wavelengths = aperture.usePolychromatic ? PHYSICS_CONSTANTS.RGB_WAVELENGTHS : [camera.wavelength];
+      // 4. Tone Mapping & Output
+      const output = new Uint8ClampedArray(N*N*4);
       
-      wavelengths.forEach(wl => {
-          const kObj = generateFresnelKernel(camera, aperture, wl, pixelsPerMm, maskBitmap);
-          kernels.push(kObj);
-      });
+      // ACES Tone Map Helper
+      const aces = (x) => {
+          const a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
+          return (x*(a*x+b))/(x*(c*x+d)+e);
+      };
 
-      if (!renderer) {
-          renderer = new WebGPURenderer();
-          await renderer.init(w, h);
-      } else if (renderer.width !== w || renderer.height !== h) {
-          // Re-init if size changes
-          renderer = new WebGPURenderer();
-          await renderer.init(w, h);
+      for(let i=0; i<N*N; i++) {
+          let r = resultR[i] * exposure;
+          let g = resultG[i] * exposure;
+          let b = resultB[i] * exposure;
+          
+          // Tone Map
+          r = aces(r); g = aces(g); b = aces(b);
+          
+          // Linear -> sRGB (Gamma 2.2)
+          r = Math.pow(Math.max(0, Math.min(1, r)), 1.0/2.2);
+          g = Math.pow(Math.max(0, Math.min(1, g)), 1.0/2.2);
+          b = Math.pow(Math.max(0, Math.min(1, b)), 1.0/2.2);
+          
+          output[i*4] = r * 255;
+          output[i*4+1] = g * 255;
+          output[i*4+2] = b * 255;
+          output[i*4+3] = 255;
       }
-
-      const resultBitmap = renderer.render(resizedData, kernels, exposure);
-
+      
+      const resultBitmap = await createImageBitmap(new ImageData(output, N, N));
       self.postMessage({ success: true, processed: resultBitmap }, [resultBitmap]);
       
   } catch (err) {
+    console.error(err);
     self.postMessage({ success: false, error: err.toString() });
+  } finally {
+      if (maskBitmap) maskBitmap.close();
   }
 };
 `;
@@ -692,12 +826,14 @@ const App: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [exposure, setExposure] = useState(1.0);
 
+  // Use refs to track worker and its URL to properly revoke on cleanup
   const workerRef = useRef<Worker | null>(null);
+  const workerUrlRef = useRef<string | null>(null);
 
   const createWorker = () => {
       const blob = new Blob([WORKER_CODE], { type: 'application/javascript' });
-      const workerUrl = URL.createObjectURL(blob);
-      const worker = new Worker(workerUrl);
+      const url = URL.createObjectURL(blob);
+      const worker = new Worker(url);
       
       worker.onmessage = (e) => {
         if (e.data.success) {
@@ -719,26 +855,38 @@ const App: React.FC = () => {
         setIsProcessing(false);
       };
       
-      return { worker, url: workerUrl };
+      return { worker, url };
   };
 
+  // Initial Worker Setup
   useEffect(() => {
     const { worker, url } = createWorker();
     workerRef.current = worker;
+    workerUrlRef.current = url;
 
     return () => {
         worker.terminate();
-        URL.revokeObjectURL(url);
+        if (workerUrlRef.current) URL.revokeObjectURL(workerUrlRef.current);
     };
   }, []);
 
   const terminateWorker = () => {
       if (workerRef.current) {
+          workerRef.current.onmessage = null; // Prevent race condition
           workerRef.current.terminate();
       }
+      if (workerUrlRef.current) {
+          URL.revokeObjectURL(workerUrlRef.current);
+          workerUrlRef.current = null;
+      }
       setIsProcessing(false);
-      const { worker, url } = createWorker();
-      workerRef.current = worker;
+      
+      // Delay recreation to ensure clean state
+      setTimeout(() => {
+          const { worker, url } = createWorker();
+          workerRef.current = worker;
+          workerUrlRef.current = url;
+      }, 50);
   };
 
   useEffect(() => {
@@ -752,19 +900,17 @@ const App: React.FC = () => {
     let input = uploadedImage;
     let effectiveExposure = exposure; 
 
-    // Auto Exposure / Gain Logic
+    // Auto Exposure Logic
     if (input) {
-        // For uploaded images, we treat the image as "Properly Exposed Scene".
-        // The simulation kernel is normalized to conserve energy (sum=1.0).
-        // Therefore, we do NOT want to apply the massive f-stop gain, otherwise it blows out white.
-        // We just apply the user's manual exposure slider (default 1.0).
+        // Normal Mode: Input is scene.
+        // FFT Convolution with normalized PSF is energy conserving.
+        // We do NOT add arbitrary gain here, as it leads to overexposure.
         effectiveExposure = exposure; 
     } else {
-        // Point Source Mode (Synthetic)
-        // Here we are simulating a tiny point of light.
-        // We apply a moderate gain to make the diffraction pattern visible, but not the massive f-stop gain.
-        input = generateLightSourceImage(1200, 1200, 0.15, camera.sensorWidth);
-        effectiveExposure = exposure * 50.0; // Boost visibility of diffraction fringes
+        // Point Source Mode: Generate synthetic source
+        // Needs massive boost to see diffraction rings because the source is microscopic
+        input = generateLightSourceImage(1024, 1024, 0.1, camera.sensorWidth);
+        effectiveExposure = exposure * 5000.0; 
     }
 
     let maskBitmap: ImageBitmap | undefined = undefined;

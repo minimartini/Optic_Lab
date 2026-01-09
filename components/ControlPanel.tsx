@@ -18,15 +18,119 @@ interface ControlPanelProps {
 }
 
 // Icons
-const ChevronDown = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>;
-const ChevronUp = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>;
+const ChevronDown = () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>;
+const ChevronUp = () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>;
 const CameraIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
-const ApertureIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>; 
+const ApertureIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>; 
 const FilmIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>;
 const TimerIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const DesignIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>;
-const UploadIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>;
-const ClipboardIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>;
+const UploadIcon = () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>;
+const ClipboardIcon = () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>;
+
+// --- CURVE PRESETS ---
+const CURVE_PRESETS: (Partial<ApertureConfig> & { name: string })[] = [
+    {
+        name: "Lissajous: Figure 8",
+        type: ApertureType.LISSAJOUS,
+        lissajousRX: 1, lissajousRY: 2, lissajousDelta: 90
+    },
+    {
+        name: "Lissajous: Knot (3:2)",
+        type: ApertureType.LISSAJOUS,
+        lissajousRX: 3, lissajousRY: 2, lissajousDelta: 90
+    },
+    {
+        name: "Lissajous: Complex (5:4)",
+        type: ApertureType.LISSAJOUS,
+        lissajousRX: 5, lissajousRY: 4, lissajousDelta: 0
+    },
+    {
+        name: "Spiral: Galaxy (Multi-Arm)",
+        type: ApertureType.SPIRAL,
+        spiralArms: 3, spiralTurns: 2
+    },
+    {
+        name: "Spiral: Tight Coil",
+        type: ApertureType.SPIRAL,
+        spiralArms: 1, spiralTurns: 10
+    },
+    {
+        name: "Ripple: Flower (5 Petal)",
+        type: ApertureType.ROSETTE,
+        rosettePetals: 5, slitHeight: 2.0 // Amplitude
+    },
+    {
+        name: "Ripple: Starburst (12 Petal)",
+        type: ApertureType.ROSETTE,
+        rosettePetals: 12, slitHeight: 1.0
+    }
+];
+
+// --- UI COMPONENTS ---
+const PanelModule: React.FC<{ 
+    title: string; 
+    icon?: React.ReactNode; 
+    children: React.ReactNode; 
+    isOpen?: boolean;
+    onToggle?: () => void;
+    className?: string;
+}> = ({ title, icon, children, isOpen, onToggle, className = "" }) => (
+    <div className={`border border-white/10 rounded-xl bg-white/5 backdrop-blur-sm overflow-hidden mb-4 transition-all duration-300 ${className}`}>
+        {onToggle ? (
+            <button onClick={onToggle} className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 transition-colors">
+                <div className="flex items-center gap-2 text-science-400">
+                    {icon}
+                    <span className="text-xs font-bold tracking-widest uppercase text-gray-300">{title}</span>
+                </div>
+                <div className="text-gray-500">{isOpen ? <ChevronUp /> : <ChevronDown />}</div>
+            </button>
+        ) : (
+            <div className="flex items-center gap-2 p-3 border-b border-white/5 bg-white/5">
+                <div className="text-science-400">{icon}</div>
+                <span className="text-xs font-bold tracking-widest uppercase text-gray-300">{title}</span>
+            </div>
+        )}
+        {(isOpen === undefined || isOpen) && <div className="p-4 space-y-4">{children}</div>}
+    </div>
+);
+
+const RangeControl: React.FC<{
+    label: string;
+    value: number;
+    min: number;
+    max: number;
+    step: number;
+    onChange: (val: number) => void;
+    unit?: string;
+}> = ({ label, value, min, max, step, onChange, unit }) => (
+    <div className="space-y-1.5">
+        <div className="flex justify-between items-center">
+            <label className="text-[10px] uppercase font-semibold text-gray-500 tracking-wide">{label}</label>
+            <span className="font-mono text-xs text-science-400 bg-science-950/50 px-1.5 py-0.5 rounded border border-science-900/30">
+                {value.toFixed(step < 0.1 ? 3 : step < 1 ? 1 : 0)}{unit}
+            </span>
+        </div>
+        <input 
+            type="range" min={min} max={max} step={step} value={value} 
+            onChange={e => onChange(parseFloat(e.target.value))} 
+            className="w-full accent-science-500 h-1 bg-gray-700 rounded-full appearance-none cursor-pointer hover:bg-gray-600 transition-colors" 
+        />
+    </div>
+);
+
+const SelectControl: React.FC<React.SelectHTMLAttributes<HTMLSelectElement>> = (props) => (
+    <div className="relative group">
+        <select 
+            {...props}
+            className={`w-full appearance-none bg-black/40 border border-white/10 text-gray-200 text-xs rounded p-2 outline-none focus:border-science-500/50 focus:ring-1 focus:ring-science-500/20 transition-all ${props.className}`}
+        />
+        <div className="absolute right-2 top-2.5 pointer-events-none text-gray-500 group-hover:text-science-400">
+            <ChevronDown />
+        </div>
+    </div>
+);
+
 
 const ControlPanel: React.FC<ControlPanelProps> = ({
   camera, setCamera, aperture, setAperture, simResult, isProcessing, onSimulate, onCancel, exposure, setExposure
@@ -59,6 +163,16 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     }
   };
 
+  const handleCurvePreset = (idxStr: string) => {
+      const idx = parseInt(idxStr);
+      if (idx >= 0 && idx < CURVE_PRESETS.length) {
+          const p = CURVE_PRESETS[idx];
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { name, ...config } = p;
+          setAperture(prev => ({ ...prev, ...config }));
+      }
+  };
+
   const handleMaskUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -73,6 +187,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
 
   const handlePaste = async () => {
     try {
+      if (!navigator.clipboard || !navigator.clipboard.read) {
+          throw new Error("Clipboard API not supported");
+      }
       const items = await navigator.clipboard.read();
       for (const item of items) {
         if (item.types.some(type => type.startsWith('image/'))) {
@@ -86,22 +203,19 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         }
       }
       alert("No image found on clipboard");
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to access clipboard. Check permissions.");
+      if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
+          alert("Clipboard access blocked. Use Import.");
+      } else {
+          alert("Clipboard error. Use Import.");
+      }
     }
   };
 
   // Logic to calculate optimized double slit parameters
   const optimizeDoubleSlit = () => {
-      // 1. Slit Width (a): Small enough to have a wide diffraction envelope.
-      // a ~ sqrt(lambda * f) is a bit large, usually we want smaller.
-      // Let's pick 0.05mm - 0.1mm which is standard for laser experiments.
-      const optimalWidth = 0.08; 
-      
-      // 2. Separation (d): Controls fringe spacing (x = lambda * f / d).
-      // We want x to be around 0.2mm to be visible on a sensor.
-      // d = lambda * f / 0.2
+      const optimalWidth = simResult.optimalDiameter;
       const lambdaMm = (camera.wavelength || 550) * 1e-6;
       const f = camera.focalLength;
       const targetFringeSpacing = 0.3; // mm
@@ -109,9 +223,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
 
       setAperture(prev => ({
           ...prev,
-          slitWidth: optimalWidth,
+          slitWidth: parseFloat(optimalWidth.toFixed(4)),
           spread: parseFloat(optimalSeparation.toFixed(3)),
-          diameter: 5.0, // Length
+          diameter: Math.max(5.0, camera.sensorHeight * 1.1), 
           count: 2
       }));
   };
@@ -121,8 +235,12 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   const isExtendedShape = [
       ApertureType.SLIT, ApertureType.CROSS, ApertureType.WAVES, 
       ApertureType.YIN_YANG, ApertureType.LITHO_OPC, ApertureType.FREEFORM, 
-      ApertureType.CUSTOM, ApertureType.URA, ApertureType.SLIT_ARRAY
+      ApertureType.CUSTOM, ApertureType.URA, ApertureType.SLIT_ARRAY,
+      ApertureType.LISSAJOUS, ApertureType.SPIRAL, ApertureType.ROSETTE
   ].includes(aperture.type);
+  
+  const isDotSize = [ApertureType.MULTI_DOT, ApertureType.RANDOM, ApertureType.FIBONACCI].includes(aperture.type);
+  const isMathCurve = [ApertureType.LISSAJOUS, ApertureType.SPIRAL, ApertureType.ROSETTE].includes(aperture.type);
 
   const diag35 = 43.27;
   const diagSensor = Math.sqrt(Math.pow(camera.sensorWidth, 2) + Math.pow(camera.sensorHeight, 2));
@@ -157,35 +275,30 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       case ApertureType.ZONE_PLATE:
       case ApertureType.PHOTON_SIEVE:
         return (
-          <div className="space-y-3 bg-black/40 p-3 rounded border border-gray-800 mt-3">
-            <div className="space-y-1">
-                <div className="flex justify-between">
-                    <label className="text-gray-400 text-xs">NUMBER_OF_ZONES</label>
-                    <span className="text-science-400 font-mono">{aperture.zones || 10}</span>
-                </div>
-                <input 
-                    type="range" min="1" max="50" step="1" 
-                    value={aperture.zones || 10} 
-                    onChange={e => updateAp('zones', parseInt(e.target.value))} 
-                    className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                />
-            </div>
+          <div className="space-y-4 pt-2 border-t border-white/5">
+            <RangeControl 
+                label="Number of Zones"
+                value={aperture.zones || 10} min={1} max={50} step={1}
+                onChange={v => updateAp('zones', v)}
+            />
+            
             {aperture.type === ApertureType.ZONE_PLATE && (
-                <div className="mt-2 pt-2 border-t border-[#333]">
-                    <label className="text-gray-400 text-[10px] uppercase font-bold block mb-1">Transmission Profile</label>
-                    <div className="flex bg-[#111] p-0.5 rounded border border-[#333]">
-                        <button 
-                            onClick={() => updateAp('zonePlateProfile', 'BINARY')}
-                            className={`flex-1 py-1 text-[9px] rounded ${aperture.zonePlateProfile !== 'SINUSOIDAL' ? 'bg-[#333] text-white' : 'text-gray-500'}`}
-                        >
-                            BINARY (Standard)
-                        </button>
-                        <button 
-                            onClick={() => updateAp('zonePlateProfile', 'SINUSOIDAL')}
-                            className={`flex-1 py-1 text-[9px] rounded ${aperture.zonePlateProfile === 'SINUSOIDAL' ? 'bg-[#333] text-white' : 'text-gray-500'}`}
-                        >
-                            SINUSOIDAL (Newton's)
-                        </button>
+                <div className="pt-2">
+                    <label className="text-gray-500 text-[9px] uppercase font-bold block mb-2 tracking-wide">Transmission Profile</label>
+                    <div className="flex bg-black/40 p-1 rounded-lg border border-white/10">
+                        {['BINARY', 'SINUSOIDAL', 'SPIRAL'].map(mode => (
+                            <button 
+                                key={mode}
+                                onClick={() => updateAp('zonePlateProfile', mode)}
+                                className={`flex-1 py-1.5 text-[9px] rounded font-bold transition-all ${
+                                    (aperture.zonePlateProfile === mode || (!aperture.zonePlateProfile && mode === 'BINARY'))
+                                    ? 'bg-science-600 text-white shadow-lg' 
+                                    : 'text-gray-500 hover:text-gray-300'
+                                }`}
+                            >
+                                {mode.substring(0,4)}
+                            </button>
+                        ))}
                     </div>
                 </div>
             )}
@@ -194,81 +307,51 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       case ApertureType.SLIT:
       case ApertureType.CROSS:
         return (
-          <div className="space-y-3 bg-black/40 p-3 rounded border border-gray-800 mt-3">
-            <div className="space-y-1">
-                <div className="flex justify-between">
-                    <label className="text-gray-400 text-xs">LINE THICKNESS (mm)</label>
-                    <span className="text-science-400 font-mono">{aperture.slitWidth || 0.2}</span>
-                </div>
-                <input 
-                    type="range" min="0.01" max="2.0" step="0.01" 
-                    value={aperture.slitWidth || 0.2} 
-                    onChange={e => updateAp('slitWidth', parseFloat(e.target.value))} 
-                    className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                />
-            </div>
+          <div className="pt-2 border-t border-white/5">
+            <RangeControl label="Line Thickness" value={aperture.slitWidth || 0.2} min={0.01} max={2.0} step={0.01} onChange={v => updateAp('slitWidth', v)} unit="mm" />
+             <button 
+                onClick={() => updateAp('slitWidth', parseFloat(simResult.optimalDiameter.toFixed(3)))}
+                className="w-full mt-2 bg-science-950/40 text-science-400 border border-science-900/50 py-1.5 text-[10px] rounded hover:bg-science-900/60 transition-colors uppercase font-medium tracking-wide"
+            >
+                Set Optimal: {simResult.optimalDiameter.toFixed(3)}mm
+            </button>
           </div>
         );
       case ApertureType.SLIT_ARRAY:
           return (
-             <div className="space-y-3 bg-black/40 p-3 rounded border border-gray-800 mt-3">
-                 <div className="flex justify-between items-center">
-                    <h3 className="text-[10px] text-cyan-400 font-bold">Young's Interference Setup</h3>
+             <div className="space-y-4 pt-2 border-t border-white/5">
+                 <div className="flex justify-between items-center bg-cyan-950/20 p-2 rounded border border-cyan-900/30">
+                    <span className="text-[9px] text-cyan-400 font-bold uppercase tracking-wide">Young's Setup</span>
                     <button 
                         onClick={optimizeDoubleSlit}
-                        className="text-[9px] bg-cyan-900/40 text-cyan-400 px-2 py-0.5 rounded border border-cyan-800 hover:bg-cyan-900/60"
+                        className="text-[9px] bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded hover:bg-cyan-500/30 border border-cyan-500/30 transition-colors"
                     >
-                        AUTO-OPTIMIZE
+                        Auto-Optimize
                     </button>
                  </div>
                  
-                 <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">SLIT COUNT</label>
-                        <span className="text-science-400 font-mono">{aperture.count || 2}</span>
-                    </div>
-                    <input 
-                        type="range" min="2" max="20" step="1" 
-                        value={aperture.count || 2} 
-                        onChange={e => updateAp('count', parseInt(e.target.value))} 
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                    />
-                </div>
+                 <RangeControl label="Slit Count" value={aperture.count || 2} min={2} max={20} step={1} onChange={v => updateAp('count', v)} />
+                 
+                 <div className="space-y-2">
+                    <RangeControl label="Slit Width" value={aperture.slitWidth || 0.1} min={0.01} max={1.0} step={0.005} onChange={v => updateAp('slitWidth', v)} unit="mm" />
+                    <button 
+                        onClick={() => updateAp('slitWidth', parseFloat(simResult.optimalDiameter.toFixed(3)))}
+                        className="w-full bg-white/5 text-science-400 border border-white/10 py-1 text-[9px] rounded hover:bg-white/10 transition-colors uppercase"
+                    >
+                        Optimal Width: {simResult.optimalDiameter.toFixed(3)}mm
+                    </button>
+                 </div>
 
-                <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">SLIT WIDTH (mm)</label>
-                        <span className="text-science-400 font-mono">{aperture.slitWidth || 0.1}</span>
-                    </div>
-                    <input 
-                        type="range" min="0.01" max="1.0" step="0.005" 
-                        value={aperture.slitWidth || 0.1} 
-                        onChange={e => updateAp('slitWidth', parseFloat(e.target.value))} 
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                    />
-                </div>
-
-                <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">SEPARATION (mm)</label>
-                        <span className="text-science-400 font-mono">{aperture.spread || 0.5}</span>
-                    </div>
-                    <input 
-                        type="range" min="0.05" max="5.0" step="0.05" 
-                        value={aperture.spread || 0.5} 
-                        onChange={e => updateAp('spread', parseFloat(e.target.value))} 
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                    />
-                </div>
+                 <RangeControl label="Separation" value={aperture.spread || 0.5} min={0.05} max={5.0} step={0.05} onChange={v => updateAp('spread', v)} unit="mm" />
                 
                 {simResult.fringeSpacing && (
-                    <div className="mt-2 p-2 bg-[#222] rounded border border-[#333]">
-                        <div className="flex justify-between text-[9px] text-gray-400">
-                            <span>Fringe Spacing:</span>
+                    <div className="p-3 bg-black/40 rounded border border-white/5 space-y-1">
+                        <div className="flex justify-between text-[10px]">
+                            <span className="text-gray-500">Fringe Spacing</span>
                             <span className="text-white font-mono">{simResult.fringeSpacing.toFixed(3)} mm</span>
                         </div>
-                        <div className="flex justify-between text-[9px] text-gray-400 mt-1">
-                            <span>Visibility:</span>
+                        <div className="flex justify-between text-[10px]">
+                            <span className="text-gray-500">Visibility</span>
                             <span className={simResult.interferenceRating?.includes("Strong") ? "text-green-400" : "text-yellow-400"}>
                                 {simResult.interferenceRating}
                             </span>
@@ -280,13 +363,12 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
 
       case ApertureType.URA:
          return (
-             <div className="space-y-3 bg-black/40 p-3 rounded border border-gray-800 mt-3">
-                <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">URA RANK (Prime)</label>
-                        <span className="text-science-400 font-mono">{aperture.uraRank || 13}</span>
+             <div className="space-y-4 pt-2 border-t border-white/5">
+                <div>
+                    <div className="flex justify-between mb-1">
+                        <label className="text-[10px] uppercase font-semibold text-gray-500">URA Rank (Prime)</label>
+                        <span className="font-mono text-xs text-science-400">{aperture.uraRank || 13}</span>
                     </div>
-                    {/* Common URA Ranks */}
                     <input 
                         type="range" min="0" max="5" step="1" 
                         value={[5, 7, 11, 13, 17, 19].indexOf(aperture.uraRank || 13)}
@@ -294,70 +376,66 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                             const ranks = [5, 7, 11, 13, 17, 19];
                             updateAp('uraRank', ranks[parseInt(e.target.value)]);
                         }}
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
+                        className="w-full accent-science-500 h-1 bg-gray-700 rounded-full appearance-none cursor-pointer" 
                     />
-                    <div className="flex justify-between text-[8px] text-gray-500">
+                    <div className="flex justify-between text-[8px] text-gray-600 mt-1 font-mono">
                         <span>5</span><span>7</span><span>11</span><span>13</span><span>17</span><span>19</span>
                     </div>
                 </div>
-                <p className="text-[9px] text-gray-500 italic mt-1">
-                     Uniformly Redundant Arrays allow high light throughput with recoverable detail (via deconvolution).
+                <p className="text-[9px] text-gray-500 italic bg-white/5 p-2 rounded">
+                     Uniformly Redundant Arrays allow high light throughput with recoverable detail.
                  </p>
              </div>
          );
 
+      case ApertureType.LISSAJOUS:
+        return (
+             <div className="space-y-4 pt-2 border-t border-white/5">
+                 <div className="grid grid-cols-2 gap-3">
+                     <div className="space-y-1">
+                        <label className="text-gray-500 text-[10px] uppercase font-bold">Freq X</label>
+                        <input type="number" min="1" max="20" value={aperture.lissajousRX || 3} onChange={e => updateAp('lissajousRX', parseInt(e.target.value))} className="w-full bg-black/40 border border-white/10 p-1.5 rounded text-xs text-white outline-none focus:border-science-500" />
+                     </div>
+                     <div className="space-y-1">
+                        <label className="text-gray-500 text-[10px] uppercase font-bold">Freq Y</label>
+                        <input type="number" min="1" max="20" value={aperture.lissajousRY || 2} onChange={e => updateAp('lissajousRY', parseInt(e.target.value))} className="w-full bg-black/40 border border-white/10 p-1.5 rounded text-xs text-white outline-none focus:border-science-500" />
+                     </div>
+                 </div>
+                 <RangeControl label="Phase Shift" value={aperture.lissajousDelta || 0} min={0} max={360} step={1} onChange={v => updateAp('lissajousDelta', v)} unit="°" />
+                 <RangeControl label="Line Thickness" value={aperture.slitWidth || 0.1} min={0.01} max={1.0} step={0.01} onChange={v => updateAp('slitWidth', v)} unit="mm" />
+             </div>
+        );
+
+      case ApertureType.SPIRAL:
+        return (
+             <div className="space-y-4 pt-2 border-t border-white/5">
+                 <RangeControl label="Turns" value={aperture.spiralTurns || 3} min={1} max={20} step={0.5} onChange={v => updateAp('spiralTurns', v)} />
+                 <RangeControl label="Arms" value={aperture.spiralArms || 1} min={1} max={12} step={1} onChange={v => updateAp('spiralArms', v)} />
+                 <RangeControl label="Line Thickness" value={aperture.slitWidth || 0.1} min={0.01} max={1.0} step={0.01} onChange={v => updateAp('slitWidth', v)} unit="mm" />
+             </div>
+        );
+
+      case ApertureType.ROSETTE:
+        return (
+             <div className="space-y-4 pt-2 border-t border-white/5">
+                 <RangeControl label="Petals / Ripples" value={aperture.rosettePetals || 5} min={3} max={50} step={1} onChange={v => updateAp('rosettePetals', v)} />
+                 <RangeControl label="Amplitude" value={aperture.slitHeight || 1.0} min={0.1} max={10.0} step={0.1} onChange={v => updateAp('slitHeight', v)} unit="mm" />
+                 <RangeControl label="Line Thickness" value={aperture.slitWidth || 0.1} min={0.01} max={1.0} step={0.01} onChange={v => updateAp('slitWidth', v)} unit="mm" />
+             </div>
+        );
+
       case ApertureType.WAVES: 
       case ApertureType.YIN_YANG:
          return (
-             <div className="space-y-3 bg-black/40 p-3 rounded border border-gray-800 mt-3">
-                <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">LINE THICKNESS (mm)</label>
-                        <span className="text-science-400 font-mono">{aperture.slitWidth || 0.1}</span>
-                    </div>
-                    <input 
-                        type="range" min="0.01" max="1.0" step="0.01" 
-                        value={aperture.slitWidth || 0.1} 
-                        onChange={e => updateAp('slitWidth', parseFloat(e.target.value))} 
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                    />
-                </div>
-                <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">WAVE AMPLITUDE (mm)</label>
-                        <span className="text-science-400 font-mono">{aperture.slitHeight || 2.0}</span>
-                    </div>
-                    <input 
-                        type="range" min="0.5" max={Math.max(10.0, diagSensor * 1.1)} step="0.1" 
-                        value={aperture.slitHeight || 2.0} 
-                        onChange={e => updateAp('slitHeight', parseFloat(e.target.value))} 
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                    />
-                </div>
-                 <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">NUMBER OF WAVES</label>
-                        <span className="text-science-400 font-mono">{aperture.count || 2}</span>
-                    </div>
-                    <input 
-                        type="range" min="1" max="10" step="1" 
-                        value={aperture.count || 2} 
-                        onChange={e => updateAp('count', parseInt(e.target.value))} 
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                    />
-                </div>
+             <div className="space-y-4 pt-2 border-t border-white/5">
+                <RangeControl label="Line Thickness" value={aperture.slitWidth || 0.1} min={0.01} max={1.0} step={0.01} onChange={v => updateAp('slitWidth', v)} unit="mm" />
+                <button onClick={() => updateAp('slitWidth', parseFloat(simResult.optimalDiameter.toFixed(3)))} className="w-full bg-white/5 text-science-400 border border-white/10 py-1 text-[9px] rounded hover:bg-white/10 transition-colors uppercase">Set Optimal Width</button>
+                <RangeControl label="Wave Amplitude" value={aperture.slitHeight || 2.0} min={0.5} max={Math.max(10.0, diagSensor * 1.1)} step={0.1} onChange={v => updateAp('slitHeight', v)} unit="mm" />
+                <RangeControl label="Wave Count" value={aperture.count || 2} min={1} max={10} step={1} onChange={v => updateAp('count', v)} />
+                
                 {aperture.type === ApertureType.YIN_YANG && (
-                     <div className="space-y-1 pt-2 border-t border-[#333]">
-                        <div className="flex justify-between">
-                            <label className="text-gray-400 text-xs">CENTER DOT SIZE (mm)</label>
-                            <span className="text-science-400 font-mono">{aperture.innerDiameter || 0.2}</span>
-                        </div>
-                        <input 
-                            type="range" min="0.01" max="2.0" step="0.01" 
-                            value={aperture.innerDiameter || 0.2} 
-                            onChange={e => updateAp('innerDiameter', parseFloat(e.target.value))} 
-                            className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                        />
+                     <div className="pt-2 border-t border-white/5">
+                        <RangeControl label="Dot Size" value={aperture.innerDiameter || 0.2} min={0.01} max={2.0} step={0.01} onChange={v => updateAp('innerDiameter', v)} unit="mm" />
                     </div>
                 )}
              </div>
@@ -365,79 +443,24 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
 
       case ApertureType.LITHO_OPC:
         return (
-             <div className="space-y-3 bg-black/40 p-3 rounded border border-gray-800 mt-3">
-                 <h3 className="text-[10px] text-cyan-400 font-bold mb-2">Resolution Enhancement Tech (RET)</h3>
-                 <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">MAIN FEATURE SIZE (mm)</label>
-                        <span className="text-science-400 font-mono">{aperture.diameter}</span>
-                    </div>
-                    <input 
-                        type="range" min="0.05" max="5.0" step="0.05" 
-                        value={aperture.diameter} 
-                        onChange={e => updateAp('diameter', parseFloat(e.target.value))} 
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                    />
+             <div className="space-y-4 pt-2 border-t border-white/5">
+                 <div className="p-2 bg-indigo-950/20 border border-indigo-900/30 rounded">
+                    <h3 className="text-[9px] text-indigo-400 font-bold uppercase mb-1">Resolution Enhancement</h3>
+                    <p className="text-[9px] text-gray-500">Simulates sub-resolution assist features (SRAF) used in photolithography.</p>
                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">SRAF SIZE (mm)</label>
-                        <span className="text-science-400 font-mono">{aperture.slitWidth || 0.05}</span>
-                    </div>
-                    <input 
-                        type="range" min="0.01" max="1.0" step="0.01" 
-                        value={aperture.slitWidth || 0.05} 
-                        onChange={e => updateAp('slitWidth', parseFloat(e.target.value))} 
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                    />
-                 </div>
-                 <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">SRAF DISTANCE (mm)</label>
-                        <span className="text-science-400 font-mono">{aperture.spread || 1.0}</span>
-                    </div>
-                    <input 
-                        type="range" min="0.1" max="5.0" step="0.1" 
-                        value={aperture.spread || 1.0} 
-                        onChange={e => updateAp('spread', parseFloat(e.target.value))} 
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                    />
-                 </div>
-                 <p className="text-[9px] text-gray-500 italic mt-1">
-                     Tune SRAF Distance to see constructive interference sharpening the main bar.
-                 </p>
+                 <RangeControl label="Main Feature" value={aperture.diameter} min={0.05} max={5.0} step={0.05} onChange={v => updateAp('diameter', v)} unit="mm" />
+                 <RangeControl label="SRAF Size" value={aperture.slitWidth || 0.05} min={0.01} max={1.0} step={0.01} onChange={v => updateAp('slitWidth', v)} unit="mm" />
+                 <RangeControl label="SRAF Distance" value={aperture.spread || 1.0} min={0.1} max={5.0} step={0.1} onChange={v => updateAp('spread', v)} unit="mm" />
              </div>
         );
 
       case ApertureType.ANNULAR:
       case ApertureType.STAR:
          return (
-            <div className="space-y-3 bg-black/40 p-3 rounded border border-gray-800 mt-3">
-                <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">INNER DIAMETER (mm)</label>
-                        <span className="text-science-400 font-mono">{aperture.innerDiameter || aperture.diameter * 0.5}</span>
-                    </div>
-                    <input 
-                        type="range" min="0.01" max={aperture.diameter} step="0.01" 
-                        value={aperture.innerDiameter || aperture.diameter * 0.5} 
-                        onChange={e => updateAp('innerDiameter', parseFloat(e.target.value))} 
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                    />
-                </div>
+            <div className="space-y-4 pt-2 border-t border-white/5">
+                <RangeControl label="Inner Diameter" value={aperture.innerDiameter || aperture.diameter * 0.5} min={0.01} max={aperture.diameter} step={0.01} onChange={v => updateAp('innerDiameter', v)} unit="mm" />
                 {aperture.type === ApertureType.STAR && (
-                    <div className="space-y-1">
-                        <div className="flex justify-between">
-                            <label className="text-gray-400 text-xs">POINTS</label>
-                            <span className="text-science-400 font-mono">{aperture.spikes || 5}</span>
-                        </div>
-                        <input 
-                            type="range" min="3" max="20" step="1" 
-                            value={aperture.spikes || 5} 
-                            onChange={e => updateAp('spikes', parseInt(e.target.value))} 
-                            className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                        />
-                    </div>
+                    <RangeControl label="Points" value={aperture.spikes || 5} min={3} max={20} step={1} onChange={v => updateAp('spikes', v)} />
                 )}
             </div>
          );
@@ -446,53 +469,26 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       case ApertureType.FIBONACCI:
       case ApertureType.RANDOM:
         return (
-          <div className="space-y-3 bg-black/40 p-3 rounded border border-gray-800 mt-3">
+          <div className="space-y-4 pt-2 border-t border-white/5">
             {aperture.type === ApertureType.MULTI_DOT && (
                 <div>
-                    <label className="text-gray-400 text-xs block mb-1">PATTERN</label>
-                    <select 
-                        className="w-full bg-[#111] border border-[#333] p-1.5 rounded text-gray-200 text-xs"
-                        value={aperture.multiDotPattern}
-                        onChange={(e) => updateAp('multiDotPattern', e.target.value)}
-                    >
+                    <label className="text-gray-500 text-[10px] uppercase font-bold block mb-1">Pattern Type</label>
+                    <SelectControl value={aperture.multiDotPattern} onChange={(e) => updateAp('multiDotPattern', e.target.value)}>
                         {Object.values(MultiDotPattern).map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
+                    </SelectControl>
                 </div>
             )}
             
-            <div className="space-y-1">
-                <div className="flex justify-between">
-                    <label className="text-gray-400 text-xs">COUNT</label>
-                    <span className="text-science-400 font-mono">{aperture.count || 10}</span>
-                </div>
-                <input 
-                    type="range" min="1" max="500" step="1" 
-                    value={aperture.count || 10} 
-                    onChange={e => updateAp('count', parseInt(e.target.value))} 
-                    className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                />
-            </div>
+            <RangeControl label="Count" value={aperture.count || 10} min={1} max={500} step={1} onChange={v => updateAp('count', v)} />
+            <RangeControl label="Spread" value={aperture.spread || 2.0} min={0.5} max={20.0} step={0.1} onChange={v => updateAp('spread', v)} unit="mm" />
 
-            <div className="space-y-1">
-                <div className="flex justify-between">
-                    <label className="text-gray-400 text-xs">SPREAD / EXTENT (mm)</label>
-                    <span className="text-science-400 font-mono">{aperture.spread || 2.0}</span>
-                </div>
-                <input 
-                    type="range" min="0.5" max="20.0" step="0.1" 
-                    value={aperture.spread || 2.0} 
-                    onChange={e => updateAp('spread', parseFloat(e.target.value))} 
-                    className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                />
-            </div>
-
-             <div className="flex items-center justify-between">
-                <label className="text-gray-400 text-xs">SEED</label>
+             <div className="flex items-center justify-between bg-white/5 p-2 rounded">
+                <label className="text-gray-500 text-[10px] uppercase font-bold">Random Seed</label>
                 <button 
                     onClick={() => updateAp('seed', Math.floor(Math.random() * 10000))}
-                    className="text-[10px] bg-[#222] px-2 py-1 rounded text-science-500 hover:bg-[#333]"
+                    className="text-[9px] bg-science-900/30 text-science-300 border border-science-700/50 px-2 py-1 rounded hover:bg-science-900/50"
                 >
-                    RANDOMIZE
+                    Regenerate
                 </button>
             </div>
           </div>
@@ -501,80 +497,28 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       case ApertureType.FRACTAL:
       case ApertureType.SIERPINSKI_TRIANGLE:
          return (
-             <div className="space-y-3 bg-black/40 p-3 rounded border border-gray-800 mt-3">
-                 <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">ITERATIONS (Complexity)</label>
-                        <span className="text-science-400 font-mono">{aperture.iteration || 3}</span>
-                    </div>
-                    <input 
-                        type="range" min="1" max="6" step="1" 
-                        value={aperture.iteration || 3} 
-                        onChange={e => updateAp('iteration', parseInt(e.target.value))} 
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                    />
-                 </div>
-                 <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">SIZE / SPREAD (mm)</label>
-                        <span className="text-science-400 font-mono">{aperture.spread || 5.0}</span>
-                    </div>
-                    <input 
-                        type="range" min="1.0" max="20.0" step="0.5" 
-                        value={aperture.spread || 5.0} 
-                        onChange={e => updateAp('spread', parseFloat(e.target.value))} 
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                    />
-                 </div>
+             <div className="space-y-4 pt-2 border-t border-white/5">
+                 <RangeControl label="Iterations" value={aperture.iteration || 3} min={1} max={6} step={1} onChange={v => updateAp('iteration', v)} />
+                 <RangeControl label="Size" value={aperture.spread || 5.0} min={1.0} max={20.0} step={0.5} onChange={v => updateAp('spread', v)} unit="mm" />
              </div>
          );
          
       case ApertureType.FREEFORM:
          return (
-             <div className="space-y-3 bg-black/40 p-3 rounded border border-gray-800 mt-3">
-                 <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">BRUSH SIZE (mm)</label>
-                        <span className="text-science-400 font-mono">{aperture.brushSize || 0.5}</span>
-                    </div>
-                    <input 
-                        type="range" min="0.1" max="5.0" step="0.1" 
-                        value={aperture.brushSize || 0.5} 
-                        onChange={e => updateAp('brushSize', parseFloat(e.target.value))} 
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                    />
-                 </div>
-                 <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">CANVAS SIZE (mm)</label>
-                        <span className="text-science-400 font-mono">{aperture.diameter}</span>
-                    </div>
-                    <input 
-                        type="range" min="5" max="100" step="1" 
-                        value={aperture.diameter} 
-                        onChange={e => updateAp('diameter', parseFloat(e.target.value))} 
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                    />
-                 </div>
-                 <div className="flex gap-2">
-                     <button 
-                        onClick={() => updateAp('customPath', [])}
-                        className="flex-1 bg-red-900/30 text-red-500 py-1.5 text-[10px] rounded border border-red-900/50 hover:bg-red-900/50"
-                     >
-                         CLEAR CANVAS
-                     </button>
+             <div className="space-y-4 pt-2 border-t border-white/5">
+                 <RangeControl label="Brush Size" value={aperture.brushSize || 0.5} min={0.1} max={5.0} step={0.1} onChange={v => updateAp('brushSize', v)} unit="mm" />
+                 <RangeControl label="Canvas Size" value={aperture.diameter} min={5} max={100} step={1} onChange={v => updateAp('diameter', v)} unit="mm" />
+                 
+                 <div className="flex gap-2 pt-1">
+                     <button onClick={() => updateAp('customPath', [])} className="flex-1 bg-red-500/10 text-red-400 py-1.5 text-[10px] rounded border border-red-500/20 hover:bg-red-500/20 transition-colors uppercase font-bold">Clear</button>
                      <button 
                          onClick={() => {
-                             // Simple random path generator
-                             const pts = [];
-                             for(let i=0; i<10; i++) {
-                                 pts.push({x: (Math.random()-0.5), y: (Math.random()-0.5)});
-                             }
+                             const pts = []; for(let i=0; i<10; i++) pts.push({x: (Math.random()-0.5), y: (Math.random()-0.5)});
                              updateAp('customPath', pts);
                          }}
-                         className="flex-1 bg-[#222] text-gray-300 py-1.5 text-[10px] rounded border border-[#333] hover:bg-[#333]"
+                         className="flex-1 bg-white/5 text-gray-300 py-1.5 text-[10px] rounded border border-white/10 hover:bg-white/10 transition-colors uppercase font-bold"
                      >
-                         RANDOMIZE
+                         Randomize
                      </button>
                  </div>
              </div>
@@ -582,63 +526,33 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
 
       case ApertureType.CUSTOM:
         return (
-            <div className="space-y-3 bg-black/40 p-3 rounded border border-gray-800 mt-3">
-                <div className="space-y-1">
+            <div className="space-y-4 pt-2 border-t border-white/5">
+                <div>
                     <div className="flex justify-between items-center mb-2">
-                        <label className="text-gray-400 text-xs">MASK IMAGE</label>
+                        <label className="text-gray-500 text-[10px] uppercase font-bold">Mask Image</label>
                         <div className="flex gap-1">
-                            <button 
-                                onClick={handlePaste}
-                                className="bg-[#222] text-gray-300 px-2 py-1 rounded text-[10px] border border-[#333] hover:bg-[#333] flex items-center gap-1"
-                                title="Paste from Clipboard"
-                            >
-                                <ClipboardIcon />
-                            </button>
-                            <button 
-                                onClick={() => fileInputRef.current?.click()}
-                                className="bg-[#222] text-science-500 px-2 py-1 rounded text-[10px] border border-[#333] hover:bg-[#333] flex items-center gap-1"
-                            >
-                                <UploadIcon /> IMPORT
-                            </button>
+                            <button onClick={handlePaste} className="bg-white/5 text-gray-300 px-2 py-1 rounded text-[10px] border border-white/10 hover:bg-white/10 flex items-center gap-1"><ClipboardIcon /></button>
+                            <button onClick={() => fileInputRef.current?.click()} className="bg-science-900/30 text-science-300 px-2 py-1 rounded text-[10px] border border-science-700/50 hover:bg-science-900/50 flex items-center gap-1"><UploadIcon /> IMPORT</button>
                         </div>
-                        <input 
-                            type="file" 
-                            ref={fileInputRef} 
-                            onChange={handleMaskUpload} 
-                            className="hidden" 
-                            accept="image/*"
-                        />
+                        <input type="file" ref={fileInputRef} onChange={handleMaskUpload} className="hidden" accept="image/*" />
                     </div>
                     {aperture.maskImage ? (
-                        <div className="relative aspect-square w-12 bg-black border border-gray-700 rounded overflow-hidden mx-auto mb-2">
-                            <img src={aperture.maskImage} className="object-cover w-full h-full opacity-70" alt="Mask" />
+                        <div className="relative aspect-square w-16 bg-black border border-white/20 rounded-lg overflow-hidden mx-auto mb-2 shadow-lg">
+                            <img src={aperture.maskImage} className="object-cover w-full h-full opacity-80" alt="Mask" />
                         </div>
                     ) : (
-                        <div className="text-[10px] text-gray-600 text-center italic mb-2">No image loaded</div>
+                        <div className="text-[10px] text-gray-600 text-center italic mb-2 py-4 border border-dashed border-white/10 rounded">No image loaded</div>
                     )}
                 </div>
 
-                <div className="space-y-1 pt-2 border-t border-[#333]">
-                    <div className="flex justify-between">
-                        <label className="text-gray-400 text-xs">THRESHOLD</label>
-                        <span className="text-science-400 font-mono">{aperture.maskThreshold ?? 128}</span>
-                    </div>
-                    <input 
-                        type="range" min="0" max="255" step="1" 
-                        value={aperture.maskThreshold ?? 128} 
-                        onChange={e => updateAp('maskThreshold', parseInt(e.target.value))} 
-                        className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                    />
-                </div>
+                <RangeControl label="Threshold" value={aperture.maskThreshold ?? 128} min={0} max={255} step={1} onChange={v => updateAp('maskThreshold', v)} />
 
-                <label className="flex items-center gap-2 text-gray-400 cursor-pointer p-2 bg-[#161616] rounded border border-[#333] hover:bg-[#222] mt-2">
-                    <input 
-                        type="checkbox" 
-                        checked={aperture.maskInvert || false} 
-                        onChange={e => updateAp('maskInvert', e.target.checked)} 
-                        className="accent-science-500" 
-                    />
-                    <span className="text-[10px] font-bold">INVERT MASK</span>
+                <label className="flex items-center gap-3 text-gray-400 cursor-pointer p-2 bg-white/5 rounded border border-white/10 hover:bg-white/10 transition-colors">
+                    <div className="relative">
+                        <input type="checkbox" checked={aperture.maskInvert || false} onChange={e => updateAp('maskInvert', e.target.checked)} className="sr-only peer" />
+                        <div className="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-science-500"></div>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wide">Invert Mask</span>
                 </label>
             </div>
         );
@@ -653,99 +567,65 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   const extension = Math.max(0, camera.focalLength - flangeDist);
 
   return (
-    <div className="w-96 bg-[#0a0a0a] border-r border-[#1a1a1a] flex flex-col h-full overflow-y-auto font-sans text-sm">
-      <div className="p-4 border-b border-[#1a1a1a]">
-        <h1 className="text-lg font-bold text-science-500 tracking-tight italic">OPTIC_LAB <span className="text-white not-italic font-light">SIMULATOR</span></h1>
+    <div className="w-96 bg-noise bg-black border-r border-white/10 flex flex-col h-full overflow-y-auto font-sans text-sm backdrop-blur-sm shadow-2xl relative z-20">
+      <div className="p-5 border-b border-white/10 bg-black/40 backdrop-blur-md sticky top-0 z-30">
+        <h1 className="text-lg font-bold text-science-400 tracking-tighter flex items-center gap-2">
+            <span className="text-xl">⦿</span> OPTIC_LAB <span className="text-gray-600 font-light text-xs tracking-widest ml-1">V2.0</span>
+        </h1>
       </div>
 
-      <div className="p-4 space-y-6">
+      <div className="p-4 space-y-2">
         
-        {/* --- APERTURE PLATE SECTION (REDESIGNED) --- */}
-        <section className="bg-[#121212] rounded-xl border border-[#2a2a2a] p-4 shadow-xl relative overflow-hidden ring-1 ring-white/5">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-science-500 via-science-400 to-transparent opacity-80"></div>
-
-          <div className="flex items-center gap-3 mb-4 mt-1">
-             <div className="text-white bg-science-600 p-1.5 rounded-md shadow-lg shadow-science-900/50"><ApertureIcon /></div>
-             <div>
-                 <h2 className="text-white font-bold text-sm tracking-wide leading-none">APERTURE MODULE</h2>
-                 <p className="text-[10px] text-gray-400 mt-0.5">Geometry & Mask Definition</p>
-             </div>
-          </div>
-
-          <div className="mb-5 overflow-hidden rounded-lg border border-[#333] shadow-md">
+        {/* --- APERTURE MODULE --- */}
+        <PanelModule title="Aperture Module" icon={<ApertureIcon />} className="border-science-900/30 bg-science-950/5">
+          <div className="mb-4 overflow-hidden rounded-lg border border-white/10 shadow-2xl shadow-black">
              <AperturePreview aperture={aperture} camera={camera} onUpdateAperture={(u) => setAperture(p => ({...p, ...u}))} />
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-4">
             <div>
-                <label className="text-science-400 text-[10px] uppercase font-bold block mb-1.5 tracking-wider">Aperture Pattern</label>
-                <div className="relative group">
-                    <select 
-                        className="w-full bg-[#050505] border border-[#333] p-3 rounded-lg text-white text-sm outline-none focus:border-science-500 focus:ring-1 focus:ring-science-500/50 appearance-none font-medium transition-all group-hover:border-[#444]"
-                        value={aperture.type}
-                        onChange={(e) => updateAp('type', e.target.value as ApertureType)}
-                    >
-                        {Object.values(ApertureType).map(t => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
-                    </select>
-                    <div className="absolute right-3 top-3.5 pointer-events-none text-gray-500 group-hover:text-science-500 transition-colors">
-                        <ChevronDown />
-                    </div>
-                </div>
+                <label className="text-gray-500 text-[10px] uppercase font-bold block mb-1.5 tracking-wide">Pattern Type</label>
+                <SelectControl value={aperture.type} onChange={(e) => updateAp('type', e.target.value as ApertureType)} className="font-mono">
+                        <optgroup label="Standard"><option value={ApertureType.PINHOLE}>Pinhole</option><option value={ApertureType.SLIT}>Slit</option><option value={ApertureType.CROSS}>Cross</option><option value={ApertureType.ANNULAR}>Annular</option></optgroup>
+                        <optgroup label="Diffractive"><option value={ApertureType.ZONE_PLATE}>Zone Plate</option><option value={ApertureType.PHOTON_SIEVE}>Photon Sieve</option><option value={ApertureType.URA}>URA (Coded)</option><option value={ApertureType.SLIT_ARRAY}>Double Slit</option><option value={ApertureType.LITHO_OPC}>Litho OPC</option></optgroup>
+                        <optgroup label="Math Curves"><option value={ApertureType.LISSAJOUS}>Lissajous</option><option value={ApertureType.SPIRAL}>Spiral</option><option value={ApertureType.ROSETTE}>Rosette</option></optgroup>
+                        <optgroup label="Patterns"><option value={ApertureType.MULTI_DOT}>Multi-Dot</option><option value={ApertureType.FIBONACCI}>Fibonacci</option><option value={ApertureType.RANDOM}>Random</option><option value={ApertureType.STAR}>Star</option><option value={ApertureType.FRACTAL}>Fractal</option><option value={ApertureType.SIERPINSKI_TRIANGLE}>Sierpinski</option></optgroup>
+                        <optgroup label="Custom"><option value={ApertureType.WAVES}>Waves</option><option value={ApertureType.YIN_YANG}>Yin Yang</option><option value={ApertureType.FREEFORM}>Freeform</option><option value={ApertureType.CUSTOM}>Custom Mask</option></optgroup>
+                </SelectControl>
             </div>
 
-            {!isFractalMode && aperture.type !== ApertureType.SLIT_ARRAY && (
-                <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                        <label className="text-gray-300 text-[10px] uppercase font-bold tracking-wide">
-                            {aperture.type === ApertureType.MULTI_DOT || aperture.type === ApertureType.FIBONACCI || aperture.type === ApertureType.RANDOM 
-                                ? 'DOT SIZE (mm)' 
-                                : aperture.type === ApertureType.SLIT || aperture.type === ApertureType.CROSS 
-                                    ? 'LENGTH (mm)'
-                                    : aperture.type === ApertureType.WAVES || aperture.type === ApertureType.YIN_YANG 
-                                        ? 'TOTAL WIDTH (mm)'
-                                        : aperture.type === ApertureType.LITHO_OPC 
-                                            ? 'MAIN FEATURE SIZE (mm)'
-                                            : aperture.type === ApertureType.CUSTOM
-                                                ? 'PHYSICAL SIZE (mm)'
-                                                : aperture.type === ApertureType.URA
-                                                    ? 'TOTAL SIZE (mm)'
-                                                    : 'DIAMETER (mm)'}
-                        </label>
-                        <input 
-                            type="number" 
-                            step="0.01" 
-                            min="0.001"
-                            value={aperture.diameter} 
-                            onChange={(e) => updateAp('diameter', parseFloat(e.target.value))}
-                            className="bg-[#222] border border-[#444] text-science-400 w-20 px-2 py-1 text-xs rounded text-right font-mono focus:border-science-500 outline-none"
-                        />
-                    </div>
-                    
-                    <input 
-                        type="range" 
-                        min="0.05" 
-                        max={Math.max(10.0, diagSensor * 1.1)} 
-                        step="0.01" 
-                        value={aperture.diameter} 
-                        onChange={e => updateAp('diameter', parseFloat(e.target.value))} 
-                        className="w-full accent-science-500 h-1.5 bg-gray-800 rounded appearance-none cursor-pointer" 
+            {isMathCurve && (
+                 <div className="p-2 bg-indigo-500/10 border border-indigo-500/20 rounded">
+                    <label className="text-indigo-300 text-[10px] uppercase font-bold block mb-1">Preset Config</label>
+                    <SelectControl onChange={(e) => handleCurvePreset(e.target.value)} defaultValue="-1">
+                        <option value="-1" disabled>Select Curve...</option>
+                        {CURVE_PRESETS.map((p, idx) => (<option key={idx} value={idx}>{p.name}</option>))}
+                    </SelectControl>
+                 </div>
+            )}
+
+            {!isFractalMode && (
+                <div className="space-y-4">
+                    <RangeControl 
+                        label={isDotSize ? 'Dot Diameter' : isMathCurve ? 'Total Size' : 'Diameter / Width'}
+                        value={aperture.diameter} min={0.05} max={Math.max(10.0, diagSensor * 1.1)} step={0.01}
+                        onChange={v => updateAp('diameter', v)}
+                        unit="mm"
                     />
                     
-                    {(aperture.type === ApertureType.PINHOLE || aperture.type === ApertureType.ZONE_PLATE || aperture.type === ApertureType.PHOTON_SIEVE) && (
-                        <button 
-                            onClick={() => updateAp('diameter', parseFloat(simResult.optimalDiameter.toFixed(3)))}
-                            className="w-full mt-1 bg-science-950/40 text-science-400 border border-science-900/50 py-1.5 text-[10px] rounded hover:bg-science-900/60 transition-colors uppercase font-medium tracking-wide"
+                    {(aperture.type === ApertureType.PINHOLE || aperture.type === ApertureType.ZONE_PLATE || aperture.type === ApertureType.PHOTON_SIEVE || isDotSize) && (
+                        <button onClick={() => updateAp('diameter', parseFloat(simResult.optimalDiameter.toFixed(3)))}
+                            className="w-full bg-science-900/20 text-science-400 border border-science-800/30 py-1.5 text-[10px] rounded hover:bg-science-900/40 transition-colors uppercase font-bold"
                         >
                             Set Optimal: {simResult.optimalDiameter.toFixed(3)}mm
                         </button>
                     )}
 
                     {isExtendedShape && (
-                        <button 
-                            onClick={() => updateAp('diameter', parseFloat(diagSensor.toFixed(2)))}
-                            className="w-full mt-1 bg-emerald-900/20 text-emerald-400 border border-emerald-900/30 py-1.5 text-[10px] rounded hover:bg-emerald-900/40 transition-colors uppercase font-medium tracking-wide"
+                        <button onClick={() => updateAp('diameter', parseFloat(diagSensor.toFixed(2)))}
+                            className="w-full bg-emerald-900/20 text-emerald-400 border border-emerald-900/30 py-1.5 text-[10px] rounded hover:bg-emerald-900/40 transition-colors uppercase font-bold"
                         >
-                            Fit to Sensor: {diagSensor.toFixed(1)}mm
+                            Fit Sensor: {diagSensor.toFixed(1)}mm
                         </button>
                     )}
                 </div>
@@ -753,315 +633,164 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                 
             {renderApertureSpecifics()}
             
-            <div className="space-y-1 pt-2 border-t border-[#2a2a2a]">
-                <div className="flex justify-between">
-                    <label className="text-gray-400 text-[10px] uppercase font-bold">Plate Rotation</label>
-                    <span className="text-science-400 font-mono text-xs">{aperture.rotation || 0}°</span>
-                </div>
-                <input type="range" min="0" max="360" step="1" value={aperture.rotation || 0} onChange={e => updateAp('rotation', parseInt(e.target.value))} className="w-full accent-science-500 h-1.5 bg-gray-800 rounded appearance-none cursor-pointer" />
+            <div className="pt-2 border-t border-white/5">
+                <RangeControl label="Rotation" value={aperture.rotation || 0} min={0} max={360} step={1} onChange={v => updateAp('rotation', v)} unit="°" />
             </div>
           </div>
-        </section>
+        </PanelModule>
 
-        {/* --- FILM & SIMULATION SETTINGS --- */}
-        <section>
-          <div className="flex items-center gap-2 mb-3 mt-4 pt-4 border-t border-[#1a1a1a]">
-             <div className="text-science-500"><FilmIcon /></div>
-             <h2 className="text-gray-200 font-medium text-xs uppercase tracking-wider">Film & Simulation</h2>
-          </div>
-
-          <div className="space-y-4">
-             {/* DIFFRACTION TOGGLE */}
-            <div className="bg-[#111] p-2 rounded border border-[#222]">
-                 <label className="flex items-center gap-3 cursor-pointer">
+        {/* --- SIMULATION SETTINGS --- */}
+        <PanelModule title="Physics Engine" icon={<FilmIcon />}>
+            <div className="bg-white/5 p-3 rounded-lg border border-white/10 mb-3">
+                 <label className="flex items-center gap-3 cursor-pointer group">
                     <div className="relative">
-                        <input 
-                            type="checkbox" 
-                            checked={aperture.renderDiffraction || false} 
-                            onChange={e => updateAp('renderDiffraction', e.target.checked)} 
-                            className="sr-only peer"
-                        />
-                        <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-science-500"></div>
+                        <input type="checkbox" checked={aperture.renderDiffraction || false} onChange={e => updateAp('renderDiffraction', e.target.checked)} className="sr-only peer" />
+                        <div className="w-10 h-6 bg-gray-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-400 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-science-600 peer-checked:after:bg-white peer-checked:after:border-white"></div>
                     </div>
                     <div>
-                         <span className="text-xs font-bold text-gray-200 block flex items-center gap-2">
-                             Render Diffraction (FFT) <span className="text-[9px] px-1 py-0.5 bg-science-900 text-science-300 rounded border border-science-700">GPU</span>
-                         </span>
-                         <span className="text-[9px] text-gray-500 block">Simulate physical wave interference.</span>
+                         <span className="text-xs font-bold text-gray-200 block group-hover:text-science-400 transition-colors">Diffraction (FFT)</span>
+                         <span className="text-[9px] text-gray-500 block">Simulate wave interference (GPU Heavy)</span>
                     </div>
                 </label>
             </div>
 
-            {/* ISO */}
-            <div className="space-y-1">
-                <div className="flex justify-between items-baseline">
-                    <label className="text-gray-500 text-[10px] uppercase font-bold">ISO Sensitivity</label>
-                    <span className="text-science-500 font-mono text-xs">{camera.iso}</span>
-                </div>
-                <input type="range" min="100" max="25600" step="100" value={camera.iso} onChange={e => updateCam('iso', parseInt(e.target.value))} className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" />
-            </div>
+            <RangeControl label="ISO Sensitivity" value={camera.iso} min={100} max={25600} step={100} onChange={v => updateCam('iso', v)} />
 
             <div className="grid grid-cols-2 gap-2 pt-2">
-                <label className="flex items-center gap-2 text-gray-400 cursor-pointer p-2 bg-[#111] rounded border border-[#222] hover:bg-[#161616]">
-                    <input type="checkbox" checked={aperture.usePolychromatic} onChange={e => updateAp('usePolychromatic', e.target.checked)} className="accent-science-500" />
-                    <span className="text-[10px] font-bold">POLYCHROMATIC</span>
+                <label className="flex items-center gap-2 text-gray-400 cursor-pointer p-2 bg-white/5 rounded border border-white/10 hover:bg-white/10">
+                    <div className="relative"><input type="checkbox" checked={aperture.usePolychromatic} onChange={e => updateAp('usePolychromatic', e.target.checked)} className="sr-only peer" /><div className="w-3 h-3 border border-gray-500 rounded peer-checked:bg-science-500 peer-checked:border-science-500"></div></div>
+                    <span className="text-[10px] font-bold">POLYCHROME</span>
                 </label>
-                <label className="flex items-center gap-2 text-gray-400 cursor-pointer p-2 bg-[#111] rounded border border-[#222] hover:bg-[#161616]">
-                    <input type="checkbox" checked={aperture.useVignetting} onChange={e => updateAp('useVignetting', e.target.checked)} className="accent-science-500" />
+                <label className="flex items-center gap-2 text-gray-400 cursor-pointer p-2 bg-white/5 rounded border border-white/10 hover:bg-white/10">
+                    <div className="relative"><input type="checkbox" checked={aperture.useVignetting} onChange={e => updateAp('useVignetting', e.target.checked)} className="sr-only peer" /><div className="w-3 h-3 border border-gray-500 rounded peer-checked:bg-science-500 peer-checked:border-science-500"></div></div>
                     <span className="text-[10px] font-bold">VIGNETTING</span>
                 </label>
             </div>
-          </div>
-        </section>
+        </PanelModule>
 
         {/* --- SIMULATE BUTTON --- */}
         <button 
             onClick={isProcessing ? onCancel : onSimulate}
-            className={`w-full py-3 rounded font-bold text-white text-sm transition-all active:scale-[0.98] shadow-lg ${
+            className={`w-full py-4 rounded-xl font-bold text-sm transition-all active:scale-[0.98] shadow-2xl uppercase tracking-widest border ${
                 isProcessing 
-                ? 'bg-red-900/80 hover:bg-red-800 text-red-100 shadow-red-900/20' 
-                : 'bg-science-600 hover:bg-science-500 shadow-science-900/20'
+                ? 'bg-red-900/20 text-red-400 border-red-900/50 animate-pulse' 
+                : 'bg-science-600 text-white hover:bg-science-500 border-science-400/30 hover:shadow-science-500/20'
             }`}
         >
-            {isProcessing ? 'STOP RENDERING' : 'RENDER SIMULATION'}
+            {isProcessing ? 'Processing FFT...' : 'Render Simulation'}
         </button>
 
         {/* --- METRICS --- */}
-        <section className="bg-[#111] p-3 rounded border border-[#1a1a1a] mt-4">
-          <h2 className="text-gray-500 text-[10px] uppercase font-bold border-b border-[#222] pb-1 mb-2">Calculated Physics</h2>
-          <div className="grid grid-cols-2 gap-3 text-xs">
+        <div className="bg-white/5 p-4 rounded-xl border border-white/10 mt-4 backdrop-blur-md">
+          <div className="flex justify-between items-center border-b border-white/10 pb-2 mb-3">
+              <h2 className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Metrics</h2>
+              <div className={`w-2 h-2 rounded-full ${simResult.isDiffractionLimited ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]' : 'bg-science-500 shadow-[0_0_8px_rgba(14,165,233,0.6)]'}`}></div>
+          </div>
+          <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
               <div>
-                  <p className="text-gray-500 text-[9px]">EFFECTIVE F-STOP</p>
-                  <p className="text-white font-mono">f/{simResult.fNumber.toFixed(1)}</p>
-                  <p className="text-[8px] text-gray-600">Based on Total Open Area</p>
+                  <p className="text-gray-500 text-[9px] uppercase">Effective Aperture</p>
+                  <p className="text-white font-mono text-sm">f/{simResult.fNumber.toFixed(1)}</p>
               </div>
               <div>
-                  <p className="text-gray-500 text-[9px]">35MM EQUIV.</p>
-                  <p className="text-white font-mono">{simResult.focalLength35mm.toFixed(1)}mm</p>
+                  <p className="text-gray-500 text-[9px] uppercase">35mm Equiv</p>
+                  <p className="text-white font-mono text-sm">{simResult.focalLength35mm.toFixed(1)}mm</p>
               </div>
                <div>
-                  <p className="text-gray-500 text-[9px]">FOV (H x V)</p>
-                  <p className="text-white font-mono">{simResult.fovH.toFixed(0)}° x {simResult.fovV.toFixed(0)}°</p>
+                  <p className="text-gray-500 text-[9px] uppercase">Field of View</p>
+                  <p className="text-white font-mono text-sm">{simResult.fovH.toFixed(0)}° x {simResult.fovV.toFixed(0)}°</p>
               </div>
               <div>
-                  <p className="text-gray-500 text-[9px]">LIMITER</p>
-                  <p className={`font-mono ${simResult.isDiffractionLimited ? 'text-amber-500' : 'text-cyan-500'}`}>
+                  <p className="text-gray-500 text-[9px] uppercase">Limiting Factor</p>
+                  <p className={`font-mono text-[10px] font-bold ${simResult.isDiffractionLimited ? 'text-amber-500' : 'text-science-400'}`}>
                     {simResult.isDiffractionLimited ? 'DIFFRACTION' : 'GEOMETRY'}
                   </p>
-                  <p className="text-[8px] text-gray-600">Based on Smallest Feature</p>
               </div>
           </div>
-        </section>
+        </div>
 
         {/* --- EXPOSURE ASSISTANT --- */}
-        <div className="bg-[#111] border border-[#222] rounded-lg overflow-hidden mt-4">
-             <button 
-                onClick={() => setIsExpCalcOpen(!isExpCalcOpen)}
-                className="w-full p-3 flex justify-between items-center hover:bg-[#161616] transition-colors"
-             >
-                <div className="flex items-center gap-3">
-                    <div className="text-amber-500"><TimerIcon /></div>
-                    <div className="text-left">
-                        <div className="text-gray-200 font-medium text-xs uppercase tracking-wider">Exposure Assistant</div>
-                        <div className="text-gray-500 text-[10px]">Calculator & Reciprocity</div>
+        <PanelModule 
+            title="Exposure Calc" 
+            icon={<TimerIcon />} 
+            isOpen={isExpCalcOpen} 
+            onToggle={() => setIsExpCalcOpen(!isExpCalcOpen)}
+        >
+             <div className="space-y-3">
+                <p className="text-[10px] text-gray-500">Meter Reading:</p>
+                <div className="grid grid-cols-3 gap-2">
+                     <div className="bg-black/40 border border-white/10 rounded p-1">
+                        <label className="text-[9px] text-gray-600 block text-center">f/</label>
+                        <input type="number" step="0.1" value={meterF} onChange={(e) => setMeterF(parseFloat(e.target.value))} className="w-full bg-transparent text-center text-xs text-white outline-none" />
+                    </div>
+                    <div className="bg-black/40 border border-white/10 rounded p-1">
+                        <label className="text-[9px] text-gray-600 block text-center">1/t</label>
+                        <input type="number" step="1" value={meterT} onChange={(e) => setMeterT(parseFloat(e.target.value))} className="w-full bg-transparent text-center text-xs text-white outline-none" />
+                    </div>
+                    <div className="bg-black/40 border border-white/10 rounded p-1">
+                        <label className="text-[9px] text-gray-600 block text-center">ISO</label>
+                        <input type="number" step="10" value={meterIso} onChange={(e) => setMeterIso(parseFloat(e.target.value))} className="w-full bg-transparent text-center text-xs text-white outline-none" />
                     </div>
                 </div>
-                <div className="text-gray-500">{isExpCalcOpen ? <ChevronUp /> : <ChevronDown />}</div>
-             </button>
-
-             {isExpCalcOpen && (
-                 <div className="p-3 border-t border-[#222] space-y-3 bg-[#0e0e0e]">
-                    <p className="text-[10px] text-gray-500 mb-2">Input reading from external light meter:</p>
-                    
-                    <div className="grid grid-cols-3 gap-2">
-                         <div>
-                            <label className="text-gray-500 text-[9px] uppercase font-bold block mb-1">Meter Aperture</label>
-                            <div className="flex items-center bg-[#1a1a1a] border border-[#333] rounded">
-                                <span className="pl-2 text-[10px] text-gray-500">f/</span>
-                                <input 
-                                    type="number" step="0.1" value={meterF} 
-                                    onChange={(e) => setMeterF(parseFloat(e.target.value))}
-                                    className="w-full bg-transparent p-1.5 text-gray-200 text-xs outline-none"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-gray-500 text-[9px] uppercase font-bold block mb-1">Meter Shutter</label>
-                             <div className="flex items-center bg-[#1a1a1a] border border-[#333] rounded">
-                                <span className="pl-2 text-[10px] text-gray-500">1/</span>
-                                <input 
-                                    type="number" step="1" value={meterT} 
-                                    onChange={(e) => setMeterT(parseFloat(e.target.value))}
-                                    className="w-full bg-transparent p-1.5 text-gray-200 text-xs outline-none"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-gray-500 text-[9px] uppercase font-bold block mb-1">Meter ISO</label>
-                            <input 
-                                type="number" step="10" value={meterIso} 
-                                onChange={(e) => setMeterIso(parseFloat(e.target.value))}
-                                className="w-full bg-[#1a1a1a] border border-[#333] p-1.5 rounded text-gray-200 text-xs outline-none"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="bg-[#1a1a1a] p-2 rounded border border-[#333] mt-2">
-                        <div className="flex justify-between items-center">
-                            <span className="text-gray-400 text-[10px] uppercase">Calculated Exposure</span>
-                            <span className="text-amber-500 font-mono font-bold text-sm">{calculatedTime}</span>
-                        </div>
-                        <p className="text-[8px] text-gray-500 mt-1 italic">Uses effective area integration for accurate time.</p>
-                    </div>
-                 </div>
-             )}
-        </div>
+                <div className="bg-amber-900/10 p-2 rounded border border-amber-500/20 flex justify-between items-center">
+                    <span className="text-amber-500 text-[10px] uppercase font-bold">Result</span>
+                    <span className="text-amber-400 font-mono font-bold text-sm">{calculatedTime}</span>
+                </div>
+             </div>
+        </PanelModule>
 
         {/* --- CAMERA BODY SECTION --- */}
-        <div className="bg-[#111] border border-[#222] rounded-lg overflow-hidden mt-4">
-             <button 
-                onClick={() => setIsCameraOpen(!isCameraOpen)}
-                className="w-full p-3 flex justify-between items-center hover:bg-[#161616] transition-colors"
-             >
-                <div className="flex items-center gap-3">
-                    <div className="text-gray-500"><CameraIcon /></div>
-                    <div className="text-left">
-                        <div className="text-gray-200 font-medium text-xs uppercase tracking-wider">Camera Body</div>
-                        <div className="text-science-500 font-mono text-xs truncate max-w-[160px]">{currentPresetName}</div>
+        <PanelModule 
+            title="Camera Body" 
+            icon={<CameraIcon />} 
+            isOpen={isCameraOpen} 
+            onToggle={() => setIsCameraOpen(!isCameraOpen)}
+        >
+            <div className="space-y-4">
+                <div>
+                    <label className="text-gray-500 text-[10px] uppercase font-bold block mb-1">Preset Model</label>
+                    <SelectControl value={camera.modelName || 'custom'} onChange={(e) => handlePresetChange(e.target.value)}>
+                        <optgroup label="Digital">{CAMERA_PRESETS.filter(p => p.type === 'Digital').map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>
+                        <optgroup label="Film / Analog">{CAMERA_PRESETS.filter(p => p.type === 'Film').map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>
+                        <option value="custom">Custom / Homemade</option>
+                    </SelectControl>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                    <div className={`p-2 bg-black/40 rounded border border-white/10 ${!isCustomCamera ? 'opacity-50' : ''}`}>
+                        <label className="text-[9px] text-gray-500 block mb-1">Sensor W (mm)</label>
+                        <input type="number" disabled={!isCustomCamera} value={camera.sensorWidth} onChange={e => updateCam('sensorWidth', parseFloat(e.target.value))} className="w-full bg-transparent text-xs text-white outline-none font-mono" />
+                    </div>
+                    <div className={`p-2 bg-black/40 rounded border border-white/10 ${!isCustomCamera ? 'opacity-50' : ''}`}>
+                        <label className="text-[9px] text-gray-500 block mb-1">Sensor H (mm)</label>
+                        <input type="number" disabled={!isCustomCamera} value={camera.sensorHeight} onChange={e => updateCam('sensorHeight', parseFloat(e.target.value))} className="w-full bg-transparent text-xs text-white outline-none font-mono" />
                     </div>
                 </div>
-                <div className="text-gray-500">{isCameraOpen ? <ChevronUp /> : <ChevronDown />}</div>
-             </button>
 
-             {isCameraOpen && (
-                 <div className="p-3 border-t border-[#222] space-y-4 bg-[#0e0e0e]">
-                    
-                    {/* Model Select */}
-                    <div>
-                        <label className="text-gray-500 text-[10px] uppercase font-bold block mb-1">Preset Model</label>
-                        <select 
-                            className="w-full bg-[#1a1a1a] border border-[#333] p-2 rounded text-gray-200 text-xs outline-none focus:border-science-500"
-                            value={camera.modelName || 'custom'}
-                            onChange={(e) => handlePresetChange(e.target.value)}
-                        >
-                            <optgroup label="Digital">
-                                {CAMERA_PRESETS.filter(p => p.type === 'Digital').map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                            </optgroup>
-                            <optgroup label="Film / Analog">
-                                {CAMERA_PRESETS.filter(p => p.type === 'Film').map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                            </optgroup>
-                            <option value="custom">Custom / Homemade</option>
-                        </select>
-                    </div>
+                <RangeControl label="Focal Length (Depth)" value={camera.focalLength} min={Math.max(1, flangeDist)} max={300} step={1} onChange={v => updateCam('focalLength', v)} unit="mm" />
+                <div className="flex justify-between text-[9px] text-gray-600 font-mono px-1">
+                    <span>Flange: {flangeDist}mm</span>
+                    <span className={extension === 0 ? 'text-red-500' : 'text-gray-500'}>Ext: {extension.toFixed(1)}mm</span>
+                </div>
 
-                    {/* Sensor Dimensions */}
-                    <div className="grid grid-cols-2 gap-2">
+                {isCustomCamera && (
+                    <div className="mt-4 p-3 bg-cyan-900/10 rounded border border-cyan-900/30 space-y-3">
+                        <div className="flex items-center gap-2 mb-2 border-b border-cyan-900/30 pb-2 text-cyan-500">
+                            <DesignIcon /> <span className="text-[10px] uppercase font-bold">Design Assistant</span>
+                        </div>
+                        
                         <div>
-                            <label className="text-gray-500 text-[10px] uppercase font-bold block mb-1">Sensor Width</label>
-                            <div className="relative">
-                                <input 
-                                    type="number" 
-                                    disabled={!isCustomCamera}
-                                    value={camera.sensorWidth}
-                                    onChange={e => updateCam('sensorWidth', parseFloat(e.target.value))}
-                                    className={`w-full bg-[#1a1a1a] border border-[#333] p-2 rounded text-gray-200 text-xs focus:border-science-500 ${!isCustomCamera && 'opacity-50 cursor-not-allowed'}`}
-                                />
-                                <span className="absolute right-2 top-2 text-gray-600 text-xs">mm</span>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-gray-500 text-[10px] uppercase font-bold block mb-1">Sensor Height</label>
-                            <div className="relative">
-                                <input 
-                                    type="number" 
-                                    disabled={!isCustomCamera}
-                                    value={camera.sensorHeight}
-                                    onChange={e => updateCam('sensorHeight', parseFloat(e.target.value))}
-                                    className={`w-full bg-[#1a1a1a] border border-[#333] p-2 rounded text-gray-200 text-xs focus:border-science-500 ${!isCustomCamera && 'opacity-50 cursor-not-allowed'}`}
-                                />
-                                <span className="absolute right-2 top-2 text-gray-600 text-xs">mm</span>
+                            <label className="text-cyan-700 text-[9px] uppercase font-bold block mb-1">Target Equiv.</label>
+                            <div className="flex gap-2">
+                                <div className="bg-black/40 border border-cyan-900/30 p-1.5 rounded flex-1">
+                                    <input type="number" value={targetEquiv} onChange={(e) => setTargetEquiv(parseFloat(e.target.value))} className="w-full bg-transparent text-xs text-cyan-200 outline-none" />
+                                </div>
+                                <button onClick={() => updateCam('focalLength', targetEquiv / cropFactor)} className="bg-cyan-900/30 text-cyan-400 border border-cyan-800 px-3 rounded text-[9px] hover:bg-cyan-900/50 uppercase font-bold">Set</button>
                             </div>
                         </div>
                     </div>
-
-                    {/* Flange / Focal Length */}
-                    <div className="space-y-1">
-                        <div className="flex justify-between items-baseline">
-                            <label className="text-gray-500 text-[10px] uppercase font-bold">Focal Length (Box Depth)</label>
-                            <span className="text-science-500 font-mono text-xs">{camera.focalLength.toFixed(1)} mm</span>
-                        </div>
-                        <input 
-                            type="range" 
-                            min={Math.max(1, flangeDist)} 
-                            max="300" 
-                            step="1" 
-                            value={camera.focalLength} 
-                            onChange={e => updateCam('focalLength', parseFloat(e.target.value))} 
-                            className="w-full accent-science-500 h-1 bg-gray-700 rounded appearance-none" 
-                        />
-                        <div className="flex justify-between text-[9px] text-gray-600 font-mono">
-                            <span>Flange: {flangeDist}mm</span>
-                            <span className={extension === 0 ? 'text-red-500' : 'text-gray-400'}>
-                                Extension: {extension.toFixed(1)}mm
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* INTEGRATED CUSTOM DESIGNER */}
-                    {isCustomCamera && (
-                        <div className="mt-4 p-3 bg-gray-900/50 rounded border border-gray-800 space-y-3">
-                            <div className="flex items-center gap-2 mb-2 border-b border-gray-800 pb-2">
-                                <div className="text-cyan-500"><DesignIcon /></div>
-                                <h3 className="text-cyan-500 text-[10px] uppercase font-bold tracking-wider">Design & Build Assistant</h3>
-                            </div>
-                            
-                            {/* 2. Target Equivalent */}
-                            <div>
-                                <label className="text-gray-500 text-[9px] uppercase font-bold block mb-1">Target 35mm Equivalent Focal Length</label>
-                                <div className="flex gap-2">
-                                    <div className="relative flex-1">
-                                        <input 
-                                            type="number" 
-                                            value={targetEquiv} 
-                                            onChange={(e) => setTargetEquiv(parseFloat(e.target.value))} 
-                                            className="w-full bg-[#1a1a1a] border border-[#333] p-1.5 rounded text-gray-200 text-xs focus:border-cyan-500 outline-none"
-                                        />
-                                        <span className="absolute right-2 top-1.5 text-gray-600 text-[10px]">mm</span>
-                                    </div>
-                                    <button 
-                                        onClick={() => updateCam('focalLength', targetEquiv / cropFactor)}
-                                        className="bg-cyan-900/30 text-cyan-500 border border-cyan-800 px-3 rounded text-[10px] hover:bg-cyan-900/50 uppercase font-bold"
-                                    >
-                                        Set Box Depth
-                                    </button>
-                                </div>
-                                <div className="text-[9px] text-gray-500 mt-1 font-mono">
-                                    Requires Physical Depth: <span className="text-gray-300">{(targetEquiv / cropFactor).toFixed(1)}mm</span> 
-                                    <span className="ml-2 opacity-50">(Crop: {cropFactor.toFixed(2)}x)</span>
-                                </div>
-                            </div>
-
-                            {/* 3. Optimal Aperture for this box */}
-                            <div>
-                                <label className="text-gray-500 text-[9px] uppercase font-bold block mb-1">Optimal Pinhole Diameter</label>
-                                <div className="flex justify-between items-center bg-black/40 p-2 rounded border border-gray-800">
-                                    <div className="flex flex-col">
-                                        <span className="font-mono text-cyan-400 text-sm font-bold">{simResult.optimalDiameter.toFixed(3)} mm</span>
-                                        <span className="text-[8px] text-gray-600">Rayleigh Criterion for current depth</span>
-                                    </div>
-                                    <button 
-                                        onClick={() => updateAp('diameter', parseFloat(simResult.optimalDiameter.toFixed(3)))}
-                                        className="bg-[#222] text-gray-300 border border-[#444] px-3 py-1 rounded text-[10px] hover:bg-[#333] uppercase"
-                                    >
-                                        Apply to Aperture
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                 </div>
-             )}
-        </div>
+                )}
+            </div>
+        </PanelModule>
         
       </div>
     </div>

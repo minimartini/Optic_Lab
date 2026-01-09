@@ -18,6 +18,9 @@ export enum ApertureType {
   FRACTAL = 'FRACTAL',
   SIERPINSKI_TRIANGLE = 'SIERPINSKI_TRIANGLE',
   LITHO_OPC = 'LITHO_OPC',
+  LISSAJOUS = 'LISSAJOUS', // New
+  SPIRAL = 'SPIRAL',       // New
+  ROSETTE = 'ROSETTE',     // New (Ripples)
   CUSTOM = 'CUSTOM' 
 }
 
@@ -44,7 +47,7 @@ export interface ApertureConfig {
   diameter: number; 
   innerDiameter?: number; 
   zones?: number;
-  zonePlateProfile?: 'BINARY' | 'SINUSOIDAL'; // New: For Newton's Rings look
+  zonePlateProfile?: 'BINARY' | 'SINUSOIDAL' | 'SPIRAL'; // Added SPIRAL
   seed?: number;
   
   // Simulation Toggles
@@ -69,6 +72,14 @@ export interface ApertureConfig {
   iteration?: number;
   rotation?: number;
   spikes?: number;
+
+  // Math Curves (New)
+  lissajousRX?: number; // Frequency X
+  lissajousRY?: number; // Frequency Y
+  lissajousDelta?: number; // Phase Shift
+  spiralTurns?: number;
+  spiralArms?: number;
+  rosettePetals?: number; // For Ripples/Rosette
   
   // Freeform & Custom
   customPath?: {x: number, y: number}[];

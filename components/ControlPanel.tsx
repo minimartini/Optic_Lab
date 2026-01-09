@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { CameraConfig, ApertureConfig, ApertureType, SimulationResult, CAMERA_PRESETS, MultiDotPattern } from '../types';
+import { CameraConfig, ApertureConfig, ApertureType, SimulationResult, CAMERA_PRESETS, MultiDotPattern, ProductionItem } from '../types';
 import { PHYSICS_CONSTANTS } from '../utils/physics';
 import AperturePreview from './AperturePreview';
+import ProductionModal from './ProductionModal';
 
 interface ControlPanelProps {
   camera: CameraConfig;
@@ -27,6 +28,8 @@ const TimerIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColo
 const DesignIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>;
 const UploadIcon = () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>;
 const ClipboardIcon = () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>;
+const CubeIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>;
+const PlusIcon = () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>;
 
 // --- CURVE PRESETS ---
 const CURVE_PRESETS: (Partial<ApertureConfig> & { name: string })[] = [
@@ -75,7 +78,8 @@ const PanelModule: React.FC<{
     isOpen?: boolean;
     onToggle?: () => void;
     className?: string;
-}> = ({ title, icon, children, isOpen, onToggle, className = "" }) => (
+    action?: React.ReactNode;
+}> = ({ title, icon, children, isOpen, onToggle, className = "", action }) => (
     <div className={`border border-white/10 rounded-xl bg-white/5 backdrop-blur-sm overflow-hidden mb-4 transition-all duration-300 ${className}`}>
         {onToggle ? (
             <button onClick={onToggle} className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 transition-colors">
@@ -83,12 +87,18 @@ const PanelModule: React.FC<{
                     {icon}
                     <span className="text-xs font-bold tracking-widest uppercase text-gray-300">{title}</span>
                 </div>
-                <div className="text-gray-500">{isOpen ? <ChevronUp /> : <ChevronDown />}</div>
+                <div className="flex items-center gap-2">
+                    {action}
+                    <div className="text-gray-500">{isOpen ? <ChevronUp /> : <ChevronDown />}</div>
+                </div>
             </button>
         ) : (
-            <div className="flex items-center gap-2 p-3 border-b border-white/5 bg-white/5">
-                <div className="text-science-400">{icon}</div>
-                <span className="text-xs font-bold tracking-widest uppercase text-gray-300">{title}</span>
+            <div className="flex items-center justify-between p-3 border-b border-white/5 bg-white/5">
+                <div className="flex items-center gap-2">
+                    <div className="text-science-400">{icon}</div>
+                    <span className="text-xs font-bold tracking-widest uppercase text-gray-300">{title}</span>
+                </div>
+                {action}
             </div>
         )}
         {(isOpen === undefined || isOpen) && <div className="p-4 space-y-4">{children}</div>}
@@ -137,6 +147,11 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
 }) => {
   const [isCameraOpen, setIsCameraOpen] = useState(true);
   const [isExpCalcOpen, setIsExpCalcOpen] = useState(false);
+  const [isProductionOpen, setIsProductionOpen] = useState(false);
+  
+  // Production Queue State
+  const [productionItems, setProductionItems] = useState<ProductionItem[]>([]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Exposure Calculator State
@@ -161,6 +176,20 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
             flangeDistance: p.flange 
         }));
     }
+  };
+
+  const addToProductionQueue = () => {
+      const newItem: ProductionItem = {
+          id: Date.now().toString(),
+          name: `${aperture.type} ${productionItems.length + 1}`,
+          aperture: { ...aperture }, // Deep copy
+          camera: { ...camera }
+      };
+      setProductionItems(prev => [...prev, newItem]);
+  };
+
+  const removeFromQueue = (id: string) => {
+      setProductionItems(prev => prev.filter(item => item.id !== id));
   };
 
   const handleCurvePreset = (idxStr: string) => {
@@ -567,6 +596,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   const extension = Math.max(0, camera.focalLength - flangeDist);
 
   return (
+    <>
     <div className="w-96 bg-noise bg-black border-r border-white/10 flex flex-col h-full overflow-y-auto font-sans text-sm backdrop-blur-sm shadow-2xl relative z-20">
       <div className="p-5 border-b border-white/10 bg-black/40 backdrop-blur-md sticky top-0 z-30">
         <h1 className="text-lg font-bold text-science-400 tracking-tighter flex items-center gap-2">
@@ -577,7 +607,20 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       <div className="p-4 space-y-2">
         
         {/* --- APERTURE MODULE --- */}
-        <PanelModule title="Aperture Module" icon={<ApertureIcon />} className="border-science-900/30 bg-science-950/5">
+        <PanelModule 
+            title="Aperture Module" 
+            icon={<ApertureIcon />} 
+            className="border-science-900/30 bg-science-950/5"
+            action={
+                <button 
+                    onClick={addToProductionQueue}
+                    className="text-[10px] flex items-center gap-1 bg-emerald-900/40 text-emerald-400 px-2 py-1 rounded hover:bg-emerald-900/60 border border-emerald-800/50 transition-colors uppercase font-bold"
+                    title="Add Current to Production Queue"
+                >
+                    <PlusIcon /> Queue
+                </button>
+            }
+        >
           <div className="mb-4 overflow-hidden rounded-lg border border-white/10 shadow-2xl shadow-black">
              <AperturePreview aperture={aperture} camera={camera} onUpdateAperture={(u) => setAperture(p => ({...p, ...u}))} />
           </div>
@@ -791,9 +834,25 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                 )}
             </div>
         </PanelModule>
+
+        <button 
+            onClick={() => setIsProductionOpen(true)}
+            className="w-full mt-4 flex items-center justify-center gap-2 p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-bold uppercase tracking-widest transition-colors"
+        >
+            <CubeIcon /> OpticFab Lab
+            {productionItems.length > 0 && <span className="bg-science-600 text-white text-[9px] px-1.5 py-0.5 rounded-full">{productionItems.length}</span>}
+        </button>
         
       </div>
     </div>
+
+    <ProductionModal 
+        isOpen={isProductionOpen} 
+        onClose={() => setIsProductionOpen(false)}
+        items={productionItems}
+        onRemoveItem={removeFromQueue}
+    />
+    </>
   );
 };
 
